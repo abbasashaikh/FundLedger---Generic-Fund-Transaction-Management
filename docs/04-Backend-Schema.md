@@ -7,9 +7,9 @@
 | DDL (source of truth) | [`database/schema.sql`](../database/schema.sql) |
 | Verification | [`database/verify_schema.sql`](../database/verify_schema.sql) — asserts balances, business rules and RLS |
 | Database | PostgreSQL 16+, schema `fl` |
-| Date | 06-Oct-2026 |
+| Date | 06-Oct-2026 · rev 1.1 on 07-Oct-2026 (PIN-only auth, receipts) |
 
-> **Verified.** `schema.sql` and `verify_schema.sql` were run against PostgreSQL 16 on 06-Oct-2026, and all checks passed.
+> **Verified.** `schema.sql` and `verify_schema.sql` were run against PostgreSQL 16 on 07-Oct-2026 (rev 1.1), and all checks passed.
 >
 > What was checked:
 > - fund and account balances for the PRD §13 example
@@ -83,7 +83,7 @@ Mapping to the core tables in PRD §24.1:
 | TransactionAttachments | `transaction_attachments` |
 | AuditLogs | `audit_logs` |
 | Settings | `settings` (key/value JSONB) + typed columns on `organizations` |
-| *(added)* | `opening_balances`, `payment_modes`, `txn_number_sequences`, `transaction_revisions`, `user_sessions`, `otp_challenges`, `export_jobs` |
+| *(added)* | `opening_balances`, `payment_modes`, `txn_number_sequences`, `transaction_revisions`, `user_sessions`, `login_attempts`, `export_jobs` |
 
 ---
 
@@ -96,7 +96,8 @@ Mapping to the core tables in PRD §24.1:
 | id | uuid | PK | |
 | name | varchar(150) | no | |
 | short_code | varchar(10) | no | Unique globally (future SaaS) |
-| contact_mobile, contact_email, address | | yes | |
+| contact_mobile, contact_email, address | | yes | Address is printed on receipts |
+| registration_number | varchar(60) | yes | Trust/society registration no., printed on receipts (ADR-0007) |
 | currency_code | char(3) | no | `INR` (PRD: configurable later) |
 | timezone | varchar(64) | no | IANA, default `Asia/Kolkata` |
 | date_format | varchar(20) | no | default `dd-MMM-yyyy` |
@@ -114,15 +115,16 @@ Mapping to the core tables in PRD §24.1:
 | email | citext | yes | |
 | role | user_role | no | ADMIN / MEMBER |
 | status | user_status | no | ACTIVE / INACTIVE. **Trigger enforces the active-user limit.** |
-| pin_hash | text | yes | Only in PIN fallback mode (PBKDF2 via ASP.NET Identity hasher) |
-| failed_login_count, locked_until | | | Lockout |
+| pin_hash | text | yes | PBKDF2 via ASP.NET Identity `PasswordHasher`; null until the Admin sets a temporary PIN |
+| pin_set_at | timestamptz | yes | Lockout counting restarts here after a set or reset |
+| pin_must_change | bool | no | true after an Admin set or reset; the user must choose their own PIN (TRD TR-018) |
 | last_login_at | timestamptz | yes | PRD §5.4 |
 | deactivated_at / _by | | yes | |
 | created_by / updated_by + timestamps | | | `created_by` is null only for the bootstrap admin |
 
 > **Mobile number uniqueness:** V1 is single-tenant, so `(organization_id, mobile_e164)` is unique.
 >
-> For future multi-org SaaS, one mobile number may belong to several orgs. In that case, login adds an organization picker after OTP. This is already supported because `auth_find_user_by_mobile` returns a set.
+> For future multi-org SaaS, one mobile number may belong to several orgs. In that case, login adds an organization picker after the PIN check. This is already supported because `auth_find_user_by_mobile` returns a set.
 
 ### 3.3 `funds`
 
@@ -247,10 +249,11 @@ Protection:
 - One row per refresh token. Only the hashed token is stored.
 - `family_id` links a chain of rotated tokens. If a token that was already rotated (`replaced_by` set) is presented again, every session in that family is revoked.
 
-**`otp_challenges`**
-- Holds rate-limit state and the provider reference only. **OTP codes are never stored.**
-- The table has no tenant: it is used before authentication, so it is not under RLS.
-- A cleanup job deletes rows older than 30 days. This is the only routine hard delete in the system, and it is documented in §9.
+**`login_attempts`**
+- One row per PIN login attempt (mobile, user if known, success, failure code, IP, user agent). **PINs are never stored.**
+- Lockout is computed from it per mobile number, for unknown numbers too, so a lockout does not reveal whether a number is registered (TRD TR-013).
+- The table has no tenant: it is used before authentication, so it is not under RLS. The app role may only SELECT and INSERT.
+- A cleanup job deletes rows older than 90 days. Routine purges like this are documented in §9.
 
 ### 3.13 `txn_number_sequences`, `export_jobs`
 
@@ -304,16 +307,18 @@ Settings are stored in `settings(organization_id, key, value jsonb)` and validat
 
 | Key | Type | Default | Ref |
 |---|---|---|---|
-| `auth.method` | `"OTP"` \| `"PIN"` | `"PIN"` until an OTP provider is approved | BR-004 |
-| `auth.otp_ttl_seconds` | int 60–600 | 300 | §5.4 |
-| `auth.otp_max_attempts` | int 3–10 | 5 | §5.4 |
+| `auth.pin_max_failures` | int 3–10 | 5 | TRD TR-013 |
+| `auth.pin_lockout_minutes` | int 5–1440 | 15 | TRD TR-013 |
 | `auth.session_idle_minutes` | int 15–1440 | 480 | TRD TR-015 |
 | `auth.session_absolute_days` | int 1–30 | 7 | TRD TR-015 |
 | `txn.edit_window_minutes` | int 0–1440 | 15 | §14.3 |
-| `txn.backdate_days_member` | int 0–365 | 7 | TRD §7.2 |
-| `txn.max_amount` | decimal string | `"1000000.00"` | TRD Q-07 |
-| `txn.number_period` | `"FY_APR"` \| `"CALENDAR"` | `"FY_APR"` | §21.5 |
+| `txn.backdate_days_member` | int 0–365 | 7 | TRD §7.2, decision Q-03 |
+| `txn.max_amount` | decimal string | `"1000000.00"` (₹10,00,000) | Decision Q-07 |
+| `txn.number_period` | `"FY_APR"` \| `"CALENDAR"` | `"FY_APR"` | §21.5, decision Q-08 |
 | `txn.block_negative_account` | bool | false | App Flow §4.3 |
+| `receipt.enabled` | bool | true | ADR-0007 |
+| `receipt.footer_text` | string ≤ 200 | "Computer-generated receipt. No signature required." | ADR-0007 |
+| `receipt.show_recorded_by` | bool | true | ADR-0007 |
 | `attachments.max_mb` | int 1–20 | 5 | §18 |
 | `attachments.allowed_types` | string[] | jpeg, png, webp, pdf | §18 |
 | `offline.enabled` | bool | true | §19 |
@@ -333,7 +338,7 @@ Settings are stored in `settings(organization_id, key, value jsonb)` and validat
 How the API uses it:
 - **Session context:** the API sets `app.org_id`, `app.user_id` and `app.is_admin` on each connection (TRD TR-002).
 - **No context means no rows.** This was verified: a query without context returns 0 users.
-- **"Own transactions only" is enforced in the API, not RLS.** For Members without `can_view_all_txns`, the API applies a `created_by = me` filter. It isn't in RLS because Members still need to see other users' transactions as aggregate totals on the dashboard (see open question Q-05).
+- **"Own transactions only" is enforced in the API, not RLS.** For Members without `can_view_all_txns`, the API applies a `created_by = me` filter. It isn't in RLS because Members still need to see other users' transactions as aggregate totals on the dashboard (decision Q-05: Members see all transactions by default).
 
 ---
 
@@ -375,7 +380,7 @@ Each environment has separate login roles and passwords, stored in the secrets m
 | Transactions, revisions, attachments, audit logs | **Indefinite** (financial records) | Never deleted by the app (BR-012). Exception: legal deletion requests are handled by a documented DBA procedure with an approval record. |
 | Users | Indefinite (they own historical transactions) | Deactivate. Personal-data erasure request: replace name with "Former member #n", null the mobile/email, and keep the ID. |
 | `user_sessions` | 30 days after expiry/revocation | Worker purge |
-| `otp_challenges` | 30 days | Worker purge |
+| `login_attempts` | 90 days | Worker purge |
 | `export_jobs` + files | 24 h for files, 90 days for job rows | Worker purge + bucket lifecycle rule |
 | Backups | PITR 7 days; daily dumps 30 days; monthly dumps 12 months | Provider + off-site bucket lifecycle |
 

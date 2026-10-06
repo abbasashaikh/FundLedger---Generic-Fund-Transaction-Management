@@ -228,9 +228,21 @@ DECLARE n int;
 BEGIN
   SELECT count(*) INTO n FROM fl.users;
   IF n <> 0 THEN RAISE EXCEPTION 'users visible without tenant context'; END IF;
-  SELECT count(*) INTO n FROM fl.auth_find_user_by_mobile('+919800000002');
+  SELECT count(*) INTO n FROM fl.auth_find_user_by_mobile('+919800000002') WHERE pin_must_change;
   IF n <> 1 THEN RAISE EXCEPTION 'auth lookup failed: % rows', n; END IF;
-  RAISE NOTICE 'ok: pre-auth lookup via definer function only';
+  RAISE NOTICE 'ok: pre-auth lookup via definer function only (new user must change PIN)';
+
+  -- PIN login attempts: recorded for unknown numbers too; append-only for the app role
+  INSERT INTO fl.login_attempts (mobile_e164, succeeded, failure_code)
+  VALUES ('+919999999999', false, 'UNKNOWN'), ('+919800000002', false, 'BAD_PIN');
+  SELECT count(*) INTO n FROM fl.login_attempts WHERE NOT succeeded;
+  IF n <> 2 THEN RAISE EXCEPTION 'login_attempts insert failed'; END IF;
+  BEGIN
+    UPDATE fl.login_attempts SET succeeded = true;
+    RAISE EXCEPTION 'login_attempts was updatable by app role';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE NOTICE 'ok: login_attempts insert-only for app role';
+  END;
 END $$;
 
 -- ---- BR-001 active user limit ---------------------------------------------------

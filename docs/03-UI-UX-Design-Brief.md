@@ -4,7 +4,7 @@
 |---|---|
 | Document | Design Brief v1.0 |
 | Derived from | PRD v1.1 §15, §26 · [02-App-Flow](02-App-Flow.md) |
-| Date | 06-Oct-2026 |
+| Date | 06-Oct-2026 · rev 1.1 on 07-Oct-2026 (PIN login, receipts) |
 | Audience | UI designer, frontend engineers |
 
 ---
@@ -158,35 +158,44 @@ These components are built on shadcn/ui (Radix) and live in `components/ui`. Eac
 | `FundSwitcher` | Sheet (mobile) / popover (desktop) with search, status badges, and recent funds first. |
 | `DiffView` | Field-by-field old → new for history and audit. |
 | `PermissionToggleGrid` | User × fund permission checkboxes with presets. |
+| `PinInput` | 6-digit masked numeric input with a show/hide toggle; supports password-manager autofill |
+| `ReceiptButton` | "Share receipt": Web Share API with a file where supported, otherwise download; disabled with a reason while pending sync |
 | `AttachmentPicker` | Camera (`capture="environment"`) or file; thumbnail list; client compression; upload progress. |
 
 ---
 
 ## 6. Key screen specifications
 
-### 6.1 S01/S02 Login
+### 6.1 S01 Login and S02 Set new PIN
 
 ```
 ┌───────────────────────────┐
 │                           │
 │        [logo]             │
 │       FundLedger          │
-│  Sign in with your mobile │
+│         Sign in           │
 │                           │
 │  Mobile number            │
 │  ┌────┬────────────────┐  │
 │  │+91 │ 98765 43210    │  │
 │  └────┴────────────────┘  │
+│  PIN                      │
+│  ┌────────────────────┐   │
+│  │ ● ● ● ● ● ●     👁 │   │
+│  └────────────────────┘   │
 │                           │
-│  [      Send OTP       ]  │
+│  [       Sign in       ]  │
+│        Forgot PIN?        │
 │                           │
-│  Only registered members  │
-│  can sign in.             │
+│  Only members registered  │
+│  by your Admin can sign in│
 └───────────────────────────┘
 ```
 
 - The org name and logo appear once known. On a fresh install, a neutral FundLedger mark is shown.
-- The OTP screen has 6 boxes with `autocomplete="one-time-code"`, a resend countdown, and an "Edit number" link.
+- The PIN field opens a numeric keypad (`inputmode="numeric"`) and is labelled "PIN". It is not split into separate boxes, so password managers can fill it.
+- Errors appear inline above the button. When the account is locked, the button shows a countdown ("Try again in 14:32").
+- **S02 Set new PIN** has the same layout, with the fields "New PIN" and "Confirm new PIN", a short rule hint below them, and the button "Save PIN".
 
 ### 6.2 S04 Dashboard (mobile)
 
@@ -294,7 +303,41 @@ Sections, top to bottom:
    - Edits and the cancellation, each with its reason
 5. History accordion
 
-### 6.6 Admin screens
+### 6.6 Money In receipt (PDF, A5 portrait)
+
+```
+┌──────────────────────────────────────┐
+│ AL MADAD (EXAMPLE)                   │
+│ 12 Market Road, Pune · Reg. No. …    │
+│──────────────────────────────────────│
+│ RECEIPT                              │
+│ Receipt No.  IJT26-2026-27-000001    │
+│ Date         05-Oct-2026             │
+│                                      │
+│ Received with thanks from            │
+│ Area 4 collection team               │
+│                                      │
+│ the sum of  ₹25,000.00               │
+│ Rupees Twenty-Five Thousand Only     │
+│                                      │
+│ Towards     Ijtema 2026 ·            │
+│             Ijtema Collection        │
+│ Purpose     Ijtema Collection        │
+│ Mode        Cash   Ref. —            │
+│──────────────────────────────────────│
+│ Recorded by Ahmed · Generated        │
+│ 05-Oct-2026 10:01 am · Code 7F3A9C21 │
+│ Computer-generated receipt. No       │
+│ signature required.                  │
+└──────────────────────────────────────┘
+```
+
+- Monochrome, so it prints well and survives WhatsApp compression. The amount is the most prominent element.
+- Cancelled: a large diagonal light-grey **CANCELLED** watermark and the line "Cancelled on {date}".
+- Revised: a small "Revised (rev 2)" tag next to the receipt number.
+- The ₹ glyph and Indian grouping come from the same formatting rules as the app (§4). The amount in words uses the Indian system (lakh, crore).
+
+### 6.7 Admin screens
 
 The admin screens use the desktop-first `DataTable` with a drawer for forms.
 
@@ -345,6 +388,10 @@ On S19, the user form puts the **Fund access grid** directly below the identity 
 | Cancel dialog | Title "Cancel this transaction?" · Body "It will stay in history and won't count in balances. This can't be undone." · Field "Reason (required)" · Buttons "Keep it" / "Cancel transaction" |
 | User limit | "You've reached the limit of 50 active users. Deactivate a user to add another." |
 | Empty ledger | "No transactions yet." + "Tap ＋ to record the first one." |
+| Login failure | "Mobile number or PIN is incorrect." |
+| Locked | "Too many attempts. Try again in {mm:ss}." |
+| Forgot PIN | "Ask your Admin to reset your PIN. They will give you a temporary PIN." |
+| Receipt pending | "Receipt available after sync." |
 | No funds assigned | "You haven't been added to any fund yet. Please contact your Admin." |
 
 Copy rules:
@@ -380,7 +427,7 @@ Dark mode is fully supported via tokens (§3.1). It follows the system setting b
 ## 12. Deliverables expected from design
 
 1. Figma (or Penpot) library mirroring §3 tokens and §5 components, with light and dark modes.
-2. High-fidelity mobile (360 px) and desktop (1440 px) frames for S01, S02, S04, S05, S06, S07, S08, S09, S10, S13, S14, S15, S18, S19, S21 and S25.
+2. The receipt PDF layout (§6.6), plus high-fidelity mobile (360 px) and desktop (1440 px) frames for S01, S02, S04, S05, S06, S07, S08, S09, S10, S13, S14, S15, S18, S19, S21 and S25.
 3. A clickable prototype for the critical path: login, then Money In, confirm and success, then the ledger, then detail.
 4. Redlines only for non-standard components (`AmountInput`, `ConfirmSheet`, `TxnRow`, `PermissionToggleGrid`).
 5. Token export as CSS variables / Tailwind theme (`tokens.css`).

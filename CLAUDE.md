@@ -19,7 +19,7 @@ Accepted ADRs are decisions. Do not reverse one silently: propose a new ADR that
 - **Secrets:**
   - Never commit secrets.
   - Never put secrets or DB credentials in the PWA.
-  - Never log OTPs, tokens, PINs or full mobile numbers.
+  - Never log PINs, tokens or full mobile numbers.
 - **`database/schema.sql` is the source of truth.** EF migrations must keep `database/verify_schema.sql` passing. Update both together.
 - **Branching:** work on branches and open PRs. `main` is protected.
 

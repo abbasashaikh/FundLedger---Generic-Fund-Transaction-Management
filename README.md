@@ -59,6 +59,9 @@ docker rm -f fl-pg
 
 Documentation baseline. Implementation starts with Phase 0 of the [Implementation Plan](docs/05-Implementation-Plan.md).
 
-Two decisions are still open:
-- the OTP provider ([ADR-0002](docs/adr/ADR-0002-authentication.md))
+All product decisions were recorded on 07-Oct-2026 ([TRD §18](docs/01-TRD.md#18-product-owner-decisions-07-oct-2026)):
+- mobile + PIN login ([ADR-0002](docs/adr/ADR-0002-authentication.md))
 - hosting ([ADR-0006](docs/adr/ADR-0006-hosting.md))
+- Money In receipts in V1 ([ADR-0007](docs/adr/ADR-0007-money-in-receipts.md))
+
+Still open: the production domain name.

@@ -1,7 +1,7 @@
 # ADR-0006 — Hosting and managed PostgreSQL
 
-- **Status:** **Proposed.** Needs the product owner's decision (TRD Q-02).
-- **Date:** 06-Oct-2026
+- **Status:** Accepted, 07-Oct-2026. The product owner approved the recommended option. The domain name is still to be registered.
+- **Date:** 06-Oct-2026 (proposed) · 07-Oct-2026 (accepted)
 
 ## Context
 
@@ -16,7 +16,7 @@ The engineering standard requires:
 
 Users are mostly in India, so latency matters for phones on 3G/4G.
 
-## Recommended option
+## Options evaluated (recommended set)
 
 | Component | Recommendation | Why |
 |---|---|---|
@@ -32,10 +32,15 @@ Users are mostly in India, so latency matters for phones on 3G/4G.
 - **All on one VPS** (Postgres in Docker). Cheapest, but backups, PITR, upgrades and failover all become our job, and a VPS loss can lose data. Acceptable only with WAL archiving (e.g. pgBackRest/WAL-G) to off-site storage plus restore drills.
 - **Azure App Service + Azure Database for PostgreSQL.** Natural for .NET, but costs more. Reasonable if the organization already has Azure credits.
 
-## Decision needed
+## Decision
 
-1. The DB host.
-2. The API host.
-3. The domain name.
+| Item | Choice |
+|---|---|
+| Database | Neon, one project with a `production` branch and a `staging` branch (plus short-lived branches for migration tests). Region: the closest available to India, confirmed when the project is created. |
+| API + Worker | Docker Compose on the existing VPS, behind Caddy (auto-TLS). Images are tagged by git SHA. Rollback means redeploying the previous tag with a scripted `deploy.sh <sha>`, which must be rehearsed in under 2 minutes (TRD TR-091). |
+| PWA | Cloudflare Pages, with per-PR preview deploys |
+| Object storage | Cloudflare R2, private buckets `fundledger-staging` and `fundledger-prod` |
+| Off-site backups | Nightly encrypted `pg_dump` to Backblaze B2, a different provider from Neon and R2 |
+| Domain | **To be registered by the owner.** Planned layout: `app.<domain>` (PWA), `api.<domain>` (API), `staging.<domain>` / `api-staging.<domain>`, and a status page on the monitoring vendor's domain. |
 
-Once these are chosen, update this ADR's status to Accepted and fill in the regions and plan tiers.
+Record the exact plan tiers and regions in this ADR when the resources are created (Implementation Plan P0-10).

@@ -4,7 +4,7 @@
 |---|---|
 | Document | Implementation Plan v1.0 |
 | Derived from | PRD v1.1 §28 (MVP / Release Plan) · [01-TRD](01-TRD.md) · [02-App-Flow](02-App-Flow.md) · [04-Backend-Schema](04-Backend-Schema.md) |
-| Date | 06-Oct-2026 |
+| Date | 06-Oct-2026 · rev 1.1 on 07-Oct-2026 (owner decisions applied) |
 | Assumed team | 1 full-stack developer + AI pair, with part-time product owner/tester. Durations scale down with more people. |
 | Cadence | 1-week sprints with a demo at the end of each sprint to the product owner |
 
@@ -17,10 +17,10 @@ The plan follows the six phases in PRD §28, plus a Phase 0 for setup. Phases 2�
 | Phase | Weeks | Outcome | PRD |
 |---|---|---|---|
 | 0 — Project foundation | W1 | Repo, CI, environments, skeletons, ADRs signed off | — |
-| 1 — Foundation (identity) | W2–W3 | Admin/users, login (PIN first, OTP behind a flag), roles, fund access | §28 Ph1 |
+| 1 — Foundation (identity) | W2–W3 | Admin/users, mobile + PIN login, roles, fund access | §28 Ph1 |
 | 2 — Financial core | W4–W6 | Funds, accounts, categories, opening balances, In/Out/Transfer, ledger, balances | §28 Ph2 |
 | 3 — Accountability | W7 | Audit log, edit rules, cancellation, revisions, detail screen, adjustment | §28 Ph3 |
-| 4 — Reports | W8–W9 | Dashboard, 10 reports, XLSX/CSV/PDF async export | §28 Ph4 |
+| 4 — Reports | W8–W9 | Dashboard, 10 reports, XLSX/CSV/PDF async export, Money In receipts | §28 Ph4, ADR-0007 |
 | 5 — Offline & hardening | W10–W11 | IndexedDB outbox, sync, idempotency, attachments offline, security and restore testing | §28 Ph5 |
 | 6 — Production | W12–W13 | UAT, load test, ZAP, go-live, handover, onboarding | §28 Ph6 |
 
@@ -41,11 +41,7 @@ gantt
 
 **Target go-live: week of 11-Jan-2027.**
 
-This date assumes:
-- The OTP provider decision (ADR-0002) is made by the end of W3.
-- The hosting decision (ADR-0006) is made by the end of W1.
-
-If an Ijtema event date requires an earlier go-live, see the fast-track option in §10.
+All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining dependency is the **domain name**, which is needed by W12 for production (P6-01). There is no hard event date, so the standard plan applies.
 
 ---
 
@@ -76,14 +72,13 @@ If an Ijtema event date requires an earlier go-live, see the fast-track option i
 |---|---|---|---|
 | P1-01 | Bootstrap CLI (`fundledger bootstrap`) + optional `/setup` wizard; default lookups seeded | S03 | Integration |
 | P1-02 | Domain: Organization, User, UserFundAccess; 50-user limit (API check + DB trigger mapped to 409) | — | Unit + concurrency test (51 parallel activations, exactly 50 succeed) |
-| P1-03 | Auth: `IOtpVerificationProvider` abstraction + **Console provider (dev)** + **PIN provider** | S01, S02 | Integration |
+| P1-03 | Auth: `POST /auth/login` (mobile + PIN), `PasswordHasher`, dummy-hash timing equalization, `login_attempts` lockout, weak-PIN rules, restricted session until `pinMustChange` is cleared | S01, S02 | Integration: lockout after 5 failures; identical response for unknown/inactive/wrong PIN; weak PINs rejected |
 | P1-04 | Sessions: JWT ES256 (15 min), refresh rotation with reuse detection, logout, revoke-on-deactivate | — | Token reuse test; logout-then-reuse test (Standard §2.8) |
-| P1-05 | Rate limits on auth (TRD TR-013); no-enumeration response for `otp/send` | — | Timing and shape parity test |
+| P1-05 | Per-IP rate limit on login (TRD TR-013); Admin PIN reset with session revocation; user PIN change; Admin session list/revoke | S17, S19 | Reset revokes sessions; timing parity test |
 | P1-06 | `GET /me`; client auth store (access token in memory, refresh via cookie) | — | E2E login |
 | P1-07 | Users admin: list, create, edit, status, fund access grid with presets | S18, S19 | Integration + E2E |
 | P1-08 | Authorization framework: policies, `IFundAccessGuard`, **two-user IDOR test harness** used by every later endpoint | — | Template test |
 | P1-09 | Audit writer (`IAuditWriter`) + auth/user events | — | Unit |
-| P1-10 | Real OTP provider adapter (after ADR-0002 decision), behind the `auth.method` setting | S02 | Sandbox test numbers |
 
 **Exit criteria (from PRD §29):**
 - An Admin-created active user can log in.
@@ -144,10 +139,12 @@ If an Ijtema event date requires an earlier go-live, see the fast-track option i
 | P4-03 | Report hub + viewer (summary cards, table, mobile cards), "My transactions only" scope | S14, S15 | Permission-scope tests (BR-020) |
 | P4-04 | Export pipeline: `export_jobs`, worker, ClosedXML / CsvHelper / QuestPDF, private bucket, 60 s signed URL, 24 h expiry | S16 | Idempotency-Key test; audit `EXPORT_PERFORMED` |
 | P4-05 | PDF layout: header, footer, page numbers, Indian grouping, totals | — | Visual snapshot |
-| P4-06 | Settings screen | S26 | Audit test |
+| P4-06 | Settings screen (incl. receipt settings, org registration number) | S26 | Audit test |
+| P4-07 | Money In receipt: `GET /transactions/{id}/receipt.pdf` (QuestPDF, A5), Indian amount-in-words, CANCELLED watermark, revision tag, verification code, `RECEIPT_GENERATED` audit; PWA "Share receipt" via Web Share API with download fallback | S07, S08 success | Amount-in-words unit tests (lakh/crore/paise); non-deposit returns 400; cross-fund access returns 404; p95 < 1 s |
 
 **Exit criteria (from PRD §29):**
 - Daily, date-range, user-wise, category-wise and account-wise reports match hand-computed values on the seed dataset.
+- A Money In receipt can be generated and shared from an Android phone, and a cancelled transaction's receipt shows the CANCELLED watermark.
 - An authorized export works.
 - An unauthorized export returns 403.
 
@@ -178,15 +175,15 @@ If an Ijtema event date requires an earlier go-live, see the fast-track option i
 
 | ID | Task | Done when |
 |---|---|---|
-| P6-01 | Production environment provisioned (separate DB, bucket, keys, OTP credentials, domain, TLS) | Smoke tests pass |
+| P6-01 | Production environment provisioned (separate Neon branch, R2 bucket, keys, domain, TLS) | Smoke tests pass |
 | P6-02 | k6 load test on staging: 50 VUs, mixed traffic, 10 min | p95 targets met |
 | P6-03 | UAT with 5–8 real users on staging using the Ijtema 2026 sample setup (PRD App. B). Script covers every PRD §29 row. | All criteria signed off by the product owner |
 | P6-04 | Timed entry test (≤ 30 s median), hallway test of ledger readability | Recorded |
 | P6-05 | PWA installation test: Android Chrome, Samsung Internet, desktop Chrome/Edge, iOS Safari (best effort) | Checklist |
 | P6-06 | Accessibility audit: axe clean + TalkBack pass on the critical path | 0 serious |
 | P6-07 | Privacy notice for members (what data is stored, who sees it); internal data-handling note | Published in More → About |
-| P6-08 | Ops runbook: deploy, rollback, restore, rotate secrets, OTP provider outage → switch to PIN mode, incident and post-mortem template | `docs/ops/` |
-| P6-09 | Go-live: bootstrap production org, create the fund, accounts, categories and users from the PRD App. B list | Admin logs in on production |
+| P6-08 | Ops runbook: deploy, rollback, restore, rotate secrets, Admin PIN-reset procedure, brute-force alert response, incident and post-mortem template | `docs/ops/` |
+| P6-09 | Go-live: bootstrap production org, create the fund, accounts, categories and users from the PRD App. B list; Admins hand out temporary PINs in person | Admin logs in on production |
 | P6-10 | Admin handover session (1 h) + user onboarding (15 min, one-page guide with screenshots in English, plus Hindi/Urdu if needed) | Guides in `docs/guides/` |
 | P6-11 | Hypercare: 2 weeks of daily Sentry/uptime/sync-rejection review; weekly check-in with the Admin | Issues triaged |
 
@@ -199,7 +196,7 @@ These items come from the AI-Directed Engineering Standard and apply to every st
 - [ ] Server-side validation + authorization. A two-user IDOR test exists for every new endpoint touching data.
 - [ ] Business rule covered by unit test. API covered by integration test against real Postgres with RLS on.
 - [ ] Audit event written for every mutation listed in App Flow §8.
-- [ ] No secrets in code. No PII, OTPs or tokens in logs.
+- [ ] No secrets in code. No PII, PINs or tokens in logs.
 - [ ] UI states: loading, empty, error, offline, forbidden, closed-fund.
 - [ ] Accessible: labels, focus, contrast, 44 px targets; axe clean.
 - [ ] Strings externalized (i18n), amounts and dates through `lib/format`.
@@ -209,25 +206,9 @@ These items come from the AI-Directed Engineering Standard and apply to every st
 
 ---
 
-## 10. Fast-track option (if go-live is needed by ~W8)
+## 10. Fast-track option
 
-If a fund event cannot wait 13 weeks, ship an **MVP-0** at the end of W7 containing:
-
-| Included | Deferred to V1 (W13) |
-|---|---|
-| PIN login (no OTP) | OTP |
-| Users, fund access | Offline sync (online-only; show "No connection" instead) |
-| Funds, accounts, categories, opening balances | XLSX/PDF export (CSV only, synchronous with a 5,000-row cap) |
-| Money In / Out / Transfer, ledger, detail, balances | Attachments |
-| Edit window, Admin cancel, audit log | Adjustment UI (Admin can use cancel + new entry) |
-| Daily + fund summary reports | Other 8 reports |
-
-The non-negotiables stay in MVP-0:
-- staging gate
-- backups with one restore drill
-- Sentry and uptime monitoring
-- the IDOR suite
-- the DB-level rules
+Not needed. The product owner confirmed there is no hard event date (decision Q-10, 07-Oct-2026). The full 13-week plan applies.
 
 ---
 
@@ -235,7 +216,7 @@ The non-negotiables stay in MVP-0:
 
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| R1 | No free OTP option. Indian SMS needs DLT registration (sender ID + template approval takes days to weeks). | High | Medium | Launch with PIN mode (BR-004 fallback). Start DLT registration in W1. The provider abstraction allows switching. |
+| R1 | PIN-only login is a single factor: shared or observed PINs, guessing | Medium | High | Lockout per mobile + IP limits, weak-PIN rules, Admin session list/revoke, full audit, 8 h idle timeout. Revisit OTP/passkeys for Admins (ADR-0002). |
 | R2 | Volunteers on low-end phones and poor network | High | High | Offline outbox, a small bundle budget, client image compression, 360 px design target |
 | R3 | Data-entry mistakes (wrong amount or category) | High | Medium | Confirmation sheet, 15-minute self-edit window, Admin edit with reason, cancellation |
 | R4 | Insider misuse (silent edits, hidden deletions) | Low | High | No delete anywhere, append-only audit + revisions at DB level, the creator always visible |
@@ -247,9 +228,16 @@ The non-negotiables stay in MVP-0:
 
 ---
 
-## 12. Decisions needed from the product owner (by end of W1)
+## 12. Decisions log
 
-1. **OTP provider and budget.** Should DLT registration start now? Until it is approved, the app launches in PIN mode. (ADR-0002, TRD Q-01)
-2. **Hosting and domain** (ADR-0006, TRD Q-02).
-3. **Policy questions Q-03 to Q-09** in TRD §18. The listed defaults apply if there is no answer.
-4. **Go-live constraint:** is there an event date that requires the fast-track (§10)?
+All product decisions were made on 07-Oct-2026 and are recorded in [TRD §18](01-TRD.md#18-product-owner-decisions-07-oct-2026).
+
+| Area | Decision |
+|---|---|
+| Login | Mobile + PIN, no OTP (ADR-0002) |
+| Hosting | Accepted (ADR-0006) |
+| Policies Q-03 to Q-08 | Recorded in TRD §18 |
+| Receipts | Money In receipts are in V1 (ADR-0007) |
+| Schedule | No hard event date, so no fast-track |
+
+**Still open:** the production domain name. It is needed by W12 (P6-01).

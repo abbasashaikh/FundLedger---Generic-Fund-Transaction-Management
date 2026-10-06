@@ -53,7 +53,7 @@ CREATE TYPE fl.category_direction AS ENUM ('MONEY_IN', 'MONEY_OUT');
 CREATE TYPE fl.txn_type           AS ENUM ('DEPOSIT', 'EXPENSE', 'TRANSFER', 'ADJUSTMENT');
 CREATE TYPE fl.adj_direction      AS ENUM ('INCREASE', 'DECREASE');
 CREATE TYPE fl.txn_status         AS ENUM ('ACTIVE', 'CANCELLED');
-CREATE TYPE fl.auth_method        AS ENUM ('OTP', 'PIN');
+CREATE TYPE fl.auth_method        AS ENUM ('PIN');          -- V1 is PIN-only (ADR-0002); add values later via ALTER TYPE
 CREATE TYPE fl.export_status      AS ENUM ('QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'EXPIRED');
 
 -- -----------------------------------------------------------------------------
@@ -89,6 +89,7 @@ CREATE TABLE fl.organizations (
   contact_mobile     varchar(15),
   contact_email      citext,
   address            text,
+  registration_number varchar(60),                          -- trust/society reg. no., printed on receipts
   currency_code      char(3)      NOT NULL DEFAULT 'INR',
   timezone           varchar(64)  NOT NULL DEFAULT 'Asia/Kolkata',
   date_format        varchar(20)  NOT NULL DEFAULT 'dd-MMM-yyyy',
@@ -100,9 +101,10 @@ CREATE TABLE fl.organizations (
 
 -- Key/value settings with typed JSON values (validated in the API).
 -- Known keys (see docs/04-Backend-Schema.md §5):
---   auth.method, auth.otp_ttl_seconds, auth.otp_max_attempts, auth.session_idle_minutes,
+--   auth.pin_max_failures, auth.pin_lockout_minutes, auth.session_idle_minutes,
 --   auth.session_absolute_days, txn.edit_window_minutes, txn.backdate_days_member,
 --   txn.max_amount, txn.number_period, txn.block_negative_account,
+--   receipt.enabled, receipt.footer_text, receipt.show_recorded_by,
 --   attachments.max_mb, attachments.allowed_types, offline.enabled, offline.max_queue_age_hours
 CREATE TABLE fl.settings (
   organization_id    uuid        NOT NULL REFERENCES fl.organizations(id),
@@ -114,7 +116,7 @@ CREATE TABLE fl.settings (
 );
 
 -- =============================================================================
--- 2. Users, sessions, OTP challenges
+-- 2. Users, sessions, login attempts
 -- =============================================================================
 CREATE TABLE fl.users (
   id                 uuid PRIMARY KEY,
@@ -124,9 +126,9 @@ CREATE TABLE fl.users (
   email              citext,
   role               fl.user_role   NOT NULL DEFAULT 'MEMBER',
   status             fl.user_status NOT NULL DEFAULT 'ACTIVE',
-  pin_hash           text,                                   -- only when fallback PIN auth enabled
-  failed_login_count smallint     NOT NULL DEFAULT 0,
-  locked_until       timestamptz,
+  pin_hash           text,                                   -- PBKDF2 via ASP.NET Identity PasswordHasher; null until Admin sets a temporary PIN
+  pin_set_at         timestamptz,                            -- lockout window restarts on PIN set/reset
+  pin_must_change    boolean      NOT NULL DEFAULT true,     -- true after Admin set/reset; user must choose own PIN
   last_login_at      timestamptz,
   deactivated_at     timestamptz,
   deactivated_by     uuid REFERENCES fl.users(id),
@@ -168,25 +170,23 @@ CREATE TRIGGER trg_users_active_limit
 CREATE TRIGGER trg_users_touch BEFORE UPDATE ON fl.users
   FOR EACH ROW EXECUTE FUNCTION fl.touch_updated_at();
 
--- OTP challenge bookkeeping. The OTP code itself is generated, stored and
--- verified by the managed provider (ADR-0002); we only keep rate-limit state
--- and the provider's opaque reference. No codes are ever stored here.
-CREATE TABLE fl.otp_challenges (
-  id                 uuid PRIMARY KEY,
+-- PIN login attempts (ADR-0002). Recorded for EVERY attempt, including unknown
+-- numbers, so lockout is computed per mobile number without revealing whether
+-- the number is registered. Lockout = >= auth.pin_max_failures failures for the
+-- mobile within auth.pin_lockout_minutes, counted after the user's pin_set_at.
+-- No PINs are ever stored here. Pre-auth table: no tenant, no RLS.
+CREATE TABLE fl.login_attempts (
+  id                 bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   mobile_e164        varchar(15) NOT NULL,
-  user_id            uuid REFERENCES fl.users(id),           -- null when number unknown (still rate-limited)
-  provider           varchar(30) NOT NULL,
-  provider_ref       varchar(200),
-  attempts           smallint    NOT NULL DEFAULT 0,
-  status             varchar(20) NOT NULL DEFAULT 'PENDING'
-                       CHECK (status IN ('PENDING','VERIFIED','EXPIRED','FAILED','BLOCKED')),
+  user_id            uuid REFERENCES fl.users(id),           -- null when number unknown
+  succeeded          boolean     NOT NULL,
+  failure_code       varchar(30),                            -- BAD_PIN, LOCKED, INACTIVE, UNKNOWN (internal only)
   ip_address         inet,
-  expires_at         timestamptz NOT NULL,
-  created_at         timestamptz NOT NULL DEFAULT now(),
-  verified_at        timestamptz
+  user_agent         varchar(300),
+  created_at         timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX ix_otp_mobile_created ON fl.otp_challenges (mobile_e164, created_at DESC);
-CREATE INDEX ix_otp_ip_created     ON fl.otp_challenges (ip_address, created_at DESC);
+CREATE INDEX ix_login_attempts_mobile ON fl.login_attempts (mobile_e164, created_at DESC);
+CREATE INDEX ix_login_attempts_ip     ON fl.login_attempts (ip_address, created_at DESC);
 
 -- Server-side sessions: refresh tokens are rotated on every use and stored
 -- hashed. Reuse of a rotated token revokes the whole family (theft detection).
@@ -674,14 +674,14 @@ CREATE POLICY fund_access ON fl.opening_balances AS RESTRICTIVE
 CREATE POLICY audit_admin_read ON fl.audit_logs AS RESTRICTIVE FOR SELECT
   USING (fl.current_is_admin());
 
--- Pre-authentication lookups (OTP send/verify, refresh) run through narrowly
+-- Pre-authentication lookups (PIN login, refresh) run through narrowly
 -- scoped SECURITY DEFINER functions instead of disabling RLS for the app role.
 CREATE OR REPLACE FUNCTION fl.auth_find_user_by_mobile(p_mobile varchar)
   RETURNS TABLE (user_id uuid, organization_id uuid, role fl.user_role, status fl.user_status,
-                 locked_until timestamptz, pin_hash text)
+                 pin_hash text, pin_set_at timestamptz, pin_must_change boolean)
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = fl, pg_temp AS
 $$
-  SELECT u.id, u.organization_id, u.role, u.status, u.locked_until, u.pin_hash
+  SELECT u.id, u.organization_id, u.role, u.status, u.pin_hash, u.pin_set_at, u.pin_must_change
     FROM fl.users u JOIN fl.organizations o ON o.id = u.organization_id
    WHERE u.mobile_e164 = p_mobile AND o.is_active
 $$;
@@ -710,7 +710,7 @@ GRANT SELECT, INSERT, UPDATE ON
   TO fundledger_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON fl.user_fund_access TO fundledger_app;   -- access rows are revocable
 GRANT SELECT, INSERT ON fl.audit_logs, fl.transaction_revisions TO fundledger_app;
-GRANT SELECT, INSERT, UPDATE ON fl.otp_challenges TO fundledger_app;              -- no tenant (pre-auth)
+GRANT SELECT, INSERT ON fl.login_attempts TO fundledger_app;                      -- no tenant (pre-auth)
 GRANT SELECT ON fl.v_account_movements, fl.v_fund_account_balances, fl.v_fund_balances
   TO fundledger_app, fundledger_readonly;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA fl TO fundledger_app;

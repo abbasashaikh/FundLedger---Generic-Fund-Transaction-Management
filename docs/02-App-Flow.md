@@ -4,7 +4,7 @@
 |---|---|
 | Document | App Flow v1.0 |
 | Derived from | PRD v1.1 · [01-TRD](01-TRD.md) |
-| Date | 06-Oct-2026 |
+| Date | 06-Oct-2026 · rev 1.1 on 07-Oct-2026 (PIN-only login, Money In receipts) |
 
 This document covers four things:
 - every screen in the app
@@ -22,8 +22,8 @@ The 15 core screens come from PRD Appendix A. Screens added by this document are
 
 | ID | Screen | Route | Access | PRD |
 |---|---|---|---|---|
-| S01 | Login: mobile entry | `/login` | Public | App. A #1 |
-| S02 | Login: OTP / PIN entry | `/login/verify` | Public | §5 |
+| S01 | Login: mobile + PIN | `/login` | Public | App. A #1 (PIN replaces OTP, ADR-0002) |
+| S02 | Set new PIN (first login / after reset) ➕ | `/login/set-pin` | Restricted session | §5 |
 | S03 | First-run setup (bootstrap admin) ➕ | `/setup` | Bootstrap token only | §21 |
 | S04 | Dashboard | `/` | All | §15 |
 | S05 | Fund selector (sheet / dropdown) | overlay | All | App. A #3 |
@@ -115,36 +115,38 @@ The tablet layout (768–1023 px) uses the desktop structure with a collapsed si
 
 ## 3. Authentication flows
 
-### 3.1 Login (OTP mode)
+### 3.1 Login (mobile + PIN)
+
+V1 uses mobile number + 6-digit PIN. There is no OTP or SMS (ADR-0002).
 
 ```mermaid
 flowchart TD
   A([Open app]) --> B{Valid session?<br/>refresh cookie}
   B -- yes --> D[Dashboard S04]
-  B -- no --> L1[S01 Enter mobile]
-  L1 -->|Send OTP| C{API: rate limit OK?}
-  C -- no --> L1e[Show 'Too many attempts. Try again in mm:ss']
-  C -- yes --> L2[S02 Enter 6-digit OTP<br/>timer + Resend after 60s]
-  L2 -->|Verify| V{OTP valid & user active?}
-  V -- yes --> F{First login & PIN mode?}
-  F -- yes --> P[Set new PIN] --> D
-  F -- no --> D
-  V -- invalid --> L2x[Inline error, attempts left n]
-  L2x --> L2
-  V -- expired/attempts exceeded --> L1
+  B -- no --> L1[S01 Mobile + PIN]
+  L1 -->|Sign in| V{API result}
+  V -- 200, pinMustChange --> P[S02 Set new PIN] --> D
+  V -- 200 --> D
+  V -- 401 INVALID_CREDENTIALS --> E1[Inline: 'Mobile number or PIN is incorrect.'] --> L1
+  V -- 429 ACCOUNT_LOCKED --> E2[Inline: 'Too many attempts. Try again in mm:ss'<br/>Sign in disabled until countdown ends] --> L1
 ```
 
 Login screen behaviour:
-- **S01** accepts a 10-digit Indian mobile number with a fixed `+91` prefix. The country picker is hidden in V1 but can be configured. The "Send OTP" button stays disabled until the number is valid.
-- **S02** autofills the code via the WebOTP API where the browser supports it. The 6 input boxes accept paste. Verification starts as soon as the sixth digit is entered.
-- **Unregistered or inactive numbers** see the same S02 screen, but no SMS arrives (TRD TR-011). After the first failed verify, the help text says: *"Didn't get a code? Only numbers registered by your Admin can sign in. Contact your Admin."*
+- **S01** has two fields: mobile number and PIN.
+  - The mobile number is 10 digits with a fixed `+91` prefix. The country picker is hidden in V1.
+  - The PIN is 6 masked digits with a show/hide toggle, `inputmode="numeric"` and `autocomplete="current-password"`, so the browser's password manager can save it.
+  - "Sign in" stays disabled until both fields are valid.
+- **Every failure looks the same.** Unknown numbers, deactivated users and wrong PINs all get the same message (TRD TR-011). Below the form: *"Only members registered by your Admin can sign in."*
+- **"Forgot PIN?"** opens: *"Ask your Admin to reset your PIN. They will give you a temporary PIN."* There is no self-service reset.
 - **Deactivated during a session:** the next API call returns 401 `USER_INACTIVE`. The app clears its session and outbox access, and S01 shows *"Your access has been disabled. Contact your Admin."* Unsynced items stay in the outbox and are listed on S13 after the next valid login.
 
-### 3.2 Login (PIN fallback mode)
+### 3.2 Set new PIN (S02)
 
-S02 shows a 6-digit PIN pad in place of the OTP boxes.
-- After 5 wrong PINs: *"Account locked for 15 minutes."*
-- "Forgot PIN" shows: *"Ask your Admin to reset your PIN."* There is no self-service reset, because there is no verified second channel.
+S02 appears after the first login and after an Admin reset, while `pinMustChange` is true. The session is restricted: no other screen is reachable until the user sets a PIN.
+
+- The user enters a new PIN and confirms it. Weak PINs are rejected inline: *"Choose a less predictable PIN. Avoid repeated digits, sequences like 123456, or the end of your mobile number."*
+- On success, the user sees *"PIN updated."*, then the Dashboard. Any other sessions are signed out.
+- **Change PIN** is also available any time from More (S17). It asks for the current PIN and the new PIN.
 
 ### 3.3 Session lifecycle
 
@@ -159,7 +161,7 @@ This flow creates the very first organization and Admin.
 1. The deployer runs a one-time CLI command, `fundledger bootstrap --org "Al Madad" --admin-mobile +91…`. It creates the org, the Admin and the default lookups. Alternatively, it prints a one-time setup URL (`/setup?token=…`, valid for 24 h).
 2. S03 is a 3-step wizard:
    1. Organization details
-   2. Confirm the Admin's name and mobile
+   2. Confirm the Admin's name and mobile. The CLI prints a one-time temporary PIN, and the Admin must change it at first login.
    3. Seed defaults
 3. Defaults seeded:
    - Accounts: Main Cash, Bank
@@ -223,6 +225,7 @@ Field order and defaults are designed to keep entry under 30 seconds:
 Form behaviour:
 - **Confirm before save** is required (PRD §15.3). The confirmation sheet repeats the sign and type in colour plus a label, e.g. "+ Money In".
 - **Add another** keeps the category, account and payment mode, and clears the amount, purpose and reference. This speeds up collection drives.
+- **Receipt (Money In only).** The success toast/screen offers **Share receipt** next to "Add another" and "View". It opens the phone's share sheet with the PDF (WhatsApp, SMS, email…), or downloads the PDF on desktop. Offline-queued entries show *"Receipt available after sync"* (ADR-0007).
 - **Double-submit protection:** the Confirm button is disabled while the request is in flight, and the same `clientTxnId` is reused on retry.
 
 ### 4.3 Add Transfer (S10)
@@ -277,7 +280,8 @@ Actions available on this screen:
 | Cancel | Admin AND status ACTIVE AND fund ACTIVE |
 | Add attachment | Creator or Admin, status ACTIVE |
 | Hide attachment | Admin |
-| Share (system share sheet: text summary) | All (future: PDF receipt) |
+| Receipt: View / Share PDF | DEPOSIT only; anyone who can view it; disabled while pending sync (ADR-0007) |
+| Share (system share sheet: text summary) | All |
 
 For a creator inside the edit window, the Edit button shows a countdown: "Edit (12 min left)".
 
@@ -340,13 +344,14 @@ How sync status appears in the app:
 ### 5.1 Users (S18, S19)
 
 - **S18** is a list with search, a status filter and the counter **"Active users: 23 / 50"**, which turns amber at 45 and red at 50.
-- **Add user** (S19) asks for: Full name*, Mobile*, Email, Role* (Admin/Member), Status (default Active), and Fund access.
+- **Add user** (S19) asks for: Full name*, Mobile*, Email, Role* (Admin/Member; several Admins are allowed), Status (default Active), **Temporary PIN*** (with a "Generate" button; shown once), and Fund access.
   - **Fund access** is a list of funds. Each fund has an on/off toggle and permission checkboxes: Money In, Money Out, Transfer, View reports, Export, See all transactions.
   - Presets help fill the checkboxes: **Collector** (In only), **Spender** (Out only), **Treasurer** (In, Out, Transfer, Reports, Export), **Viewer** (Reports only).
 - **When 50 users are active**, "Add user" and "Activate" are disabled with an explanation. The server is authoritative (409).
 - **Deactivate** opens a confirmation: *"Ahmed will be signed out on all devices immediately. Their past transactions are kept."* Deactivated users stay listed, with a filter to show or hide them.
 - **Show last login** on each row (PRD §21.1).
-- **Reset PIN** is only shown in PIN mode.
+- **Reset PIN** sets a new temporary PIN, shown once to the Admin to pass on in person or by phone. It signs the user out everywhere, and the user must choose a new PIN at next login.
+- **Active sessions** panel on S19: device, last used, and "Sign out" per session or for all sessions.
 
 ### 5.2 Funds (S20, S21)
 
@@ -399,7 +404,8 @@ The settings are grouped as follows:
   - max amount
   - numbering format and period (FY or calendar)
   - block negative account balance on transfer
-- **Authentication**: method (OTP / PIN), OTP expiry, session idle timeout.
+- **Authentication**: PIN failures before lockout (default 5), lockout minutes (default 15), session idle timeout.
+- **Receipts**: enable receipts, footer text, show "Recorded by", organization registration number.
 - **Attachments**: max size, allowed types.
 - **Offline**: enable offline entry, max queue age warning.
 
@@ -453,5 +459,5 @@ Legend: ✅ visible and enabled · 🔒 visible but disabled with a reason · �
 | Users | `USER_CREATED`, `USER_UPDATED`, `USER_ACTIVATED`, `USER_DEACTIVATED`, `FUND_ACCESS_CHANGED` |
 | Funds | `FUND_CREATED`, `FUND_UPDATED`, `FUND_ACTIVATED`, `FUND_CLOSED`, `FUND_REOPENED`, `FUND_ARCHIVED`, `OPENING_BALANCE_CHANGED` |
 | Master data | `ACCOUNT_CREATED`, `ACCOUNT_UPDATED`, `CATEGORY_CREATED`, `CATEGORY_UPDATED`, `LOOKUP_CHANGED` |
-| Transactions | `TXN_CREATED` (with `type`), `TXN_UPDATED`, `TXN_CANCELLED`, `ATTACHMENT_ADDED`, `ATTACHMENT_HIDDEN`, `OFFLINE_ENTRY_DISCARDED`, `OFFLINE_ENTRY_STALE` |
+| Transactions | `TXN_CREATED` (with `type`), `TXN_UPDATED`, `TXN_CANCELLED`, `ATTACHMENT_ADDED`, `ATTACHMENT_HIDDEN`, `OFFLINE_ENTRY_DISCARDED`, `OFFLINE_ENTRY_STALE`, `RECEIPT_GENERATED` |
 | System | `SETTINGS_CHANGED`, `EXPORT_PERFORMED`, `AUDIT_EXPORTED` |

@@ -4,8 +4,8 @@
 |---|---|
 | Document | TRD v1.0 |
 | Derived from | `FundLedger_Complete_PRD_v1.1.docx` (PRD v1.1) |
-| Date | 06-Oct-2026 |
-| Status | Draft for review |
+| Date | 06-Oct-2026 · rev 1.1 on 07-Oct-2026 (owner decisions applied: PIN-only login, hosting, Q-03 to Q-10) |
+| Status | Baseline: decisions recorded |
 | Companion docs | [02-App-Flow](02-App-Flow.md) · [03-UI-UX-Design-Brief](03-UI-UX-Design-Brief.md) · [04-Backend-Schema](04-Backend-Schema.md) · [05-Implementation-Plan](05-Implementation-Plan.md) · [ADRs](adr/) |
 
 Requirement IDs used below:
@@ -42,7 +42,6 @@ flowchart LR
   end
   DB[(PostgreSQL<br/>RLS enabled)]
   OBJ[(Private object storage<br/>attachments, exports)]
-  OTP[[Managed OTP<br/>verification service]]
   OBS[[Sentry · Uptime monitor · Log sink]]
 
   A & M -->|HTTPS| CDN
@@ -50,7 +49,6 @@ flowchart LR
   API --> DB
   W --> DB
   API & W --> OBJ
-  API --> OTP
   API & W & M -.-> OBS
 ```
 
@@ -70,8 +68,8 @@ src/
   FundLedger.Application/      use cases (commands/queries), validators, DTOs, policies
   FundLedger.Domain/           entities, value objects (Money, TxnNumber), domain rules, errors
   FundLedger.Infrastructure/   EF Core DbContext + migrations, RLS session interceptor,
-                               OTP providers, object storage, exporters (XLSX/CSV/PDF)
-  FundLedger.Worker/           BackgroundService host: export jobs, session/OTP cleanup
+                               object storage, exporters (XLSX/CSV/PDF), receipt PDF
+  FundLedger.Worker/           BackgroundService host: export jobs, session/login-attempt cleanup
 tests/
   FundLedger.Domain.Tests/
   FundLedger.Application.Tests/
@@ -82,7 +80,7 @@ tests/
 
 | Module | Responsibility | Main PRD refs |
 |---|---|---|
-| Identity | OTP or PIN login, sessions, refresh rotation, logout | §5, §22 |
+| Identity | Mobile + PIN login, lockout, sessions, refresh rotation, logout | §5, §22 |
 | Organization | Organization profile, settings | §6.1, §21.5 |
 | Users | User CRUD, activation, 50-user limit, fund access and permissions | §4, §21.1, BR-001..003 |
 | Funds | Fund lifecycle (Draft → Active → Closed → Archived), fund types | §6, §21.2, BR-017 |
@@ -91,7 +89,7 @@ tests/
 | Ledger | Deposit, expense, transfer, adjustment, edit, cancel, numbering, revisions | §7–§11, §13, BR-005..014, BR-016 |
 | Sync | Idempotent batch ingest of offline transactions | §19, BR-018, BR-019 |
 | Attachments | Upload, scan, signed download | §18 |
-| Reporting | Dashboard, the 10 reports, export jobs | §15, §17, BR-020 |
+| Reporting | Dashboard, the 10 reports, export jobs, Money In receipts | §15, §17, BR-020, ADR-0007 |
 | Audit | Append-only audit writer and query | §14 |
 
 Rules for module boundaries:
@@ -134,11 +132,10 @@ Versions MUST be pinned in lock files at project setup. The table states the maj
 | Backend | ASP.NET Core on **.NET 10 (LTS)** | PRD §26.1 |
 | ORM | EF Core 10 + Npgsql, `EFCore.NamingConventions` (snake_case) | |
 | Validation | FluentValidation | Request schemas (Standard §3.1) |
-| Auth plumbing | ASP.NET Core JWT bearer + Data Protection; ASP.NET Core Identity `PasswordHasher` for PIN fallback only | No custom crypto (ADR-0002) |
-| OTP | Managed verification service behind `IOtpVerificationProvider` | Provider TBD (ADR-0002) |
-| Database | PostgreSQL 16+ | Managed (recommended: Neon) or self-hosted (ADR-0006) |
-| Object storage | S3-compatible, private bucket (Cloudflare R2 / Backblaze B2 / MinIO) | Attachments + export files |
-| Exports | ClosedXML (XLSX), CsvHelper (CSV), QuestPDF (PDF) | Verify the QuestPDF licence tier at setup |
+| Auth plumbing | ASP.NET Core JWT bearer + Data Protection; ASP.NET Core Identity `PasswordHasher` for PINs | No custom crypto; no OTP/SMS in V1 (ADR-0002) |
+| Database | PostgreSQL 16+ on Neon | ADR-0006 |
+| Object storage | Cloudflare R2, private buckets (MinIO locally) | Attachments + export files (ADR-0006) |
+| Exports / receipts | ClosedXML (XLSX), CsvHelper (CSV), QuestPDF (PDF exports + receipts) | Verify the QuestPDF licence tier at setup |
 | Logging | Serilog with JSON output and request-ID enricher | Standard §8.2–8.3 |
 | Tracing / metrics | OpenTelemetry (ASP.NET Core, EF Core, HttpClient) | |
 | Error tracking | Sentry (API + PWA) | Standard §8.1 |
@@ -163,7 +160,7 @@ Versions MUST be pinned in lock files at project setup. The table states the maj
 - When a connection is returned to the pool, the context MUST be cleared. Npgsql's `DISCARD ALL` on reset already does this.
 - Unauthenticated requests run with an empty context, so they can see no tenant rows.
 
-**TR-003** — Pre-authentication lookups (OTP and refresh) MUST go through the `SECURITY DEFINER` functions `fl.auth_find_user_by_mobile` and `fl.auth_find_session`. RLS is never disabled for them.
+**TR-003** — Pre-authentication lookups (PIN login and refresh) MUST go through the `SECURITY DEFINER` functions `fl.auth_find_user_by_mobile` and `fl.auth_find_session`. RLS is never disabled for them.
 
 ### 5.2 Roles and permissions
 
@@ -177,9 +174,10 @@ Versions MUST be pinned in lock files at project setup. The table states the maj
 | Adjustment | ✅ only | ❌ (BR-016) |
 | Edit own transaction within edit window | ✅ | ✅ own only, within `txn.edit_window_minutes` (default 15) |
 | Edit any transaction / after window | ✅ with reason | ❌ |
-| Cancel transaction | ✅ with reason | ❌ in V1 (open question Q-04) |
+| Cancel transaction | ✅ with reason | ❌ Admin only (decision Q-04) |
 | Reports | ✅ | `can_view_reports` |
 | Export | ✅ | `can_export` |
+| Money In receipt (PDF / share) | ✅ | Any deposit the user can view (ADR-0007) |
 | Users, funds, accounts, categories, opening balances, settings | ✅ | ❌ |
 | Audit log | ✅ | ❌ |
 
@@ -203,46 +201,50 @@ A hidden UI button is not access control (BR-020, Standard §2.6).
 
 Details and alternatives: [ADR-0002](adr/ADR-0002-authentication.md).
 
-### 6.1 Login flow (OTP)
+### 6.1 Login flow (mobile + PIN)
+
+V1 has no OTP and no SMS. This is the product owner's decision of 07-Oct-2026.
 
 ```mermaid
 sequenceDiagram
   participant P as PWA
   participant A as API
   participant D as DB
-  participant O as OTP provider
-  P->>A: POST /api/v1/auth/otp/send {mobile}
-  A->>A: normalize to E.164, rate-limit (mobile + IP)
-  A->>D: auth_find_user_by_mobile()
-  alt active user
-    A->>O: start verification(mobile)
-    O-->>A: provider_ref
-    A->>D: insert otp_challenges(PENDING)
-  else unknown / inactive
-    A->>D: insert otp_challenges(BLOCKED) (no SMS sent)
+  P->>A: POST /api/v1/auth/login {mobile, pin}
+  A->>A: normalize to E.164; IP rate limit
+  A->>D: count recent failures in login_attempts for mobile
+  alt locked (>= 5 failures in 15 min)
+    A->>D: insert login_attempts(failed, LOCKED)
+    A-->>P: 429 ACCOUNT_LOCKED + Retry-After
+  else not locked
+    A->>D: auth_find_user_by_mobile()
+    A->>A: PasswordHasher verify (dummy hash when user unknown, to equalize timing)
+    alt active user and PIN correct
+      A->>D: insert login_attempts(success); create user_sessions; update last_login_at; audit LOGIN
+      A-->>P: 200 {accessToken, expiresIn, user, pinMustChange} + Set-Cookie fl_rt (HttpOnly, Secure, SameSite=Strict)
+    else unknown / inactive / wrong PIN
+      A->>D: insert login_attempts(failed); audit LOGIN_FAILED (known users only)
+      A-->>P: 401 INVALID_CREDENTIALS (identical body for every case)
+    end
   end
-  A-->>P: 202 {challengeId, resendAfterSeconds}  (identical shape in both branches)
-  P->>A: POST /api/v1/auth/otp/verify {challengeId, code}
-  A->>O: check verification(provider_ref, code)
-  O-->>A: approved / denied
-  A->>D: create user_sessions row, update last_login_at, audit LOGIN
-  A-->>P: 200 {accessToken, expiresIn, user} + Set-Cookie: fl_rt (HttpOnly, Secure, SameSite=Strict, Path=/api/v1/auth)
 ```
+
+If `pinMustChange` is true, the session is **restricted**: only `POST /auth/pin/change`, `POST /auth/logout` and `GET /me` are allowed until the user sets their own PIN.
 
 ### 6.2 Requirements
 
 | ID | Requirement | Ref |
 |---|---|---|
-| TR-010 | No self-registration endpoint exists. Users are created only via `POST /users` (Admin). | BR-002 |
-| TR-011 | `otp/send` returns the same response shape and similar timing for known, unknown and inactive numbers, so it cannot be used to find out which numbers are registered. **No SMS is sent for unknown or inactive numbers**, which also stops attackers running up SMS costs. | BR-003 |
-| TR-012 | OTP expiry is `auth.otp_ttl_seconds` (default 300). There are at most 5 verify attempts per challenge. | §5.4 |
-| TR-013 | Rate limits per mobile: 1 send per 60 s, 5 sends per hour, 10 per day. Per IP: 20 sends per hour. On failure the client gets `429` with `Retry-After`. | §5.4, §22 |
+| TR-010 | No self-registration endpoint exists. Users are created only via `POST /users` (Admin), with a temporary PIN set by the Admin. | BR-002 |
+| TR-011 | Login failures return one generic response, `401 INVALID_CREDENTIALS` ("Mobile number or PIN is incorrect."), for unknown numbers, inactive users and wrong PINs. Timing is equalized by verifying against a dummy hash when the user is unknown. | BR-003 |
+| TR-012 | PINs are exactly 6 digits, hashed with ASP.NET Core Identity `PasswordHasher` (PBKDF2), and rehashed automatically when the hasher version changes. Weak PINs are rejected at change time: all-same digits, straight sequences, the last 6 digits of the user's own mobile, and a denylist of common PINs. | §5.3, BR-004 |
+| TR-013 | Lockout is per mobile: `auth.pin_max_failures` (default 5) failures within `auth.pin_lockout_minutes` (default 15) lock that mobile number, counted from `login_attempts` after the user's `pin_set_at`. Unknown numbers lock the same way, so a lockout does not reveal registration. There is also a per-IP limit of 20 attempts per 15 min. Responses are `429` with `Retry-After`. | §5.4, §22 |
 | TR-014 | Access token: JWT signed with an asymmetric key (ES256), **15-minute** lifetime. It is held in memory only, never in `localStorage`. | Standard §2.7 |
 | TR-015 | Refresh token: an opaque 256-bit random value in an HttpOnly cookie. Only its SHA-256 hash is stored. Its lifetime ends after **8 h idle** or **7 days absolute**, both configurable. It is **rotated on every use**. If a rotated token is used again, the whole token family is revoked. | Standard §2.7, §2.9 |
-| TR-016 | Logout revokes the session on the server. Deactivating a user revokes all of that user's sessions immediately. | §5.4, Standard §2.8 |
-| TR-017 | OTP codes, refresh tokens, JWTs and PINs MUST NOT appear in logs, traces, Sentry breadcrumbs or audit values. Serilog destructuring policies mask them. | §22 |
-| TR-018 | Fallback PIN mode (`auth.method = PIN`): 6-digit PIN hashed with ASP.NET Core Identity `PasswordHasher` (PBKDF2). After 5 failures the account locks for 15 min. The Admin sets a temporary PIN, and the user must change it at first login. | §5.3, BR-004 |
-| TR-019 | Login, logout, failed login, lockout and session revocation all write audit events. | §14.2 |
+| TR-016 | Logout revokes the session on the server. Each of these revokes **all** of the user's sessions: deactivating the user, an Admin PIN reset, and the user changing their own PIN (except the session making the change). Admins can list and revoke a user's active sessions. | §5.4, Standard §2.8 |
+| TR-017 | PINs, refresh tokens and JWTs MUST NOT appear in logs, traces, Sentry breadcrumbs or audit values. Serilog destructuring policies mask them. | §22 |
+| TR-018 | PIN lifecycle: the Admin sets a temporary PIN when creating the user, or on reset (`pin_must_change = true`). The user must change it at first login. "Forgot PIN" means an Admin reset; there is no self-service reset. | §5.3 |
+| TR-019 | Login, logout, failed login (known users), lockout, PIN change, PIN reset and session revocation all write audit events. | §14.2 |
 | TR-020 | Signing keys are kept in a secrets manager or environment, never in the repo. Key rotation is supported through a `kid` header with two active keys. | Standard §1 |
 
 ### 6.3 Offline and authentication
@@ -279,7 +281,7 @@ All writes go through one application service. The steps run inside a single DB 
    - The payment mode is active, and a reference number is present if the mode requires one.
 5. Check the date rules:
    - `txn_date` must not be later than today in the org timezone.
-   - A Member may backdate at most `txn.backdate_days_member` days (default 7, proposed).
+   - A Member may backdate at most `txn.backdate_days_member` days (default 7; decision Q-03).
    - Admins have no backdating limit.
 6. Allocate the transaction number with `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` on `txn_number_sequences`. The row lock serializes allocations for each fund.
 7. Insert the transaction and revision 1 into `transaction_revisions`, and write the `TXN_CREATED` audit event.
@@ -416,6 +418,28 @@ Report rules:
 - **TR-063** — Each export writes an `EXPORT_PERFORMED` audit event recording the report, format, parameters and row count.
 - **TR-064** — PDFs carry a footer with: org name, fund, period, "Generated by {user} at {time}", page X/Y. Amounts use Indian digit grouping.
 
+### 10.3 Money In receipts (ADR-0007)
+
+- **TR-065** — `GET /transactions/{id}/receipt.pdf` returns a one-page A5 PDF for **DEPOSIT** transactions only. Any other type returns `400 RECEIPT_NOT_AVAILABLE`.
+  - The receipt is generated on demand from the current revision and never stored.
+  - Authorization is the same as `GET /transactions/{id}`.
+- **TR-066** — Receipt content:
+  - organization name, address and registration number
+  - receipt no. = transaction number, and the date
+  - received from
+  - amount in figures and **in words, Indian system** ("Rupees One Lakh Twenty-Five Thousand Only"; paise included when non-zero)
+  - fund, category, purpose, payment mode and reference
+  - "Recorded by" (configurable), the footer text, and a generated-at time
+  - an 8-character verification code (HMAC of transaction ID + revision)
+
+  The receipt must not claim any tax benefit (no 80G wording).
+- **TR-067** — State markers:
+  - Edited transactions show "Revised (rev n)".
+  - Cancelled transactions are watermarked **CANCELLED** with the cancellation date.
+  - Queued offline entries cannot produce a receipt until they are synced.
+- **TR-068** — Each generation writes the `RECEIPT_GENERATED` audit event with the revision. Rate limit: 60 receipts per hour per user.
+- **TR-069** — Performance: p95 under 1 s. If this is exceeded, move receipts to the async export pipeline (ADR-0007).
+
 ---
 
 ## 11. API specification
@@ -437,10 +461,8 @@ PRD §25 is the baseline. Additions are marked ➕.
 
 | Method | Path | Role | Notes |
 |---|---|---|---|
-| POST | `/auth/otp/send` | public | PRD `/auth/send-otp` |
-| POST | `/auth/otp/verify` | public | PRD `/auth/verify-otp` |
-| POST | `/auth/pin/login` ➕ | public | Fallback mode only |
-| POST | `/auth/pin/change` ➕ | user | |
+| POST | `/auth/login` | public | Mobile + PIN. Replaces PRD `/auth/send-otp` + `/auth/verify-otp` (ADR-0002). |
+| POST | `/auth/pin/change` ➕ | user | Current PIN + new PIN; allowed in a restricted session |
 | POST | `/auth/refresh` | cookie | Rotates the refresh token |
 | POST | `/auth/logout` | user | Revokes the session server-side |
 | GET | `/me` ➕ | user | Profile, role, accessible funds with permission flags, org settings needed by the client |
@@ -449,7 +471,9 @@ PRD §25 is the baseline. Additions are marked ➕.
 | PUT | `/users/{id}` | admin | |
 | PATCH | `/users/{id}/status` | admin | Deactivation revokes sessions |
 | PUT | `/users/{id}/fund-access` | admin | PRD `/permissions`; replaces the full list of `{fundId, flags}` |
-| POST | `/users/{id}/reset-pin` ➕ | admin | Fallback mode |
+| POST | `/users/{id}/reset-pin` ➕ | admin | Sets a temporary PIN and revokes the user's sessions |
+| GET | `/users/{id}/sessions` ➕ | admin | Active sessions (device, last used) |
+| POST | `/users/{id}/sessions/revoke` ➕ | admin | Revoke one session or all |
 | GET | `/organization` | user | PRD `/organizations` (single tenant per user) |
 | PUT | `/organization` ➕ | admin | |
 | GET / PUT | `/settings` ➕ | admin | Typed settings DTO |
@@ -474,6 +498,7 @@ PRD §25 is the baseline. Additions are marked ➕.
 | GET | `/transactions` | user | Search, filters and sort per PRD §16 |
 | GET | `/transactions/{id}` | user | Includes revisions and attachments |
 | GET | `/transactions/{id}/history` ➕ | user | Revision diff list |
+| GET | `/transactions/{id}/receipt.pdf` ➕ | user | DEPOSIT only (TRD §10.3, ADR-0007) |
 | PUT | `/transactions/{id}` | perm | `If-Match` required |
 | POST | `/transactions/{id}/cancel` | admin | `If-Match`, reason required |
 | POST | `/sync/transactions` ➕ | user | Batch offline ingest (§8.3) |
@@ -522,7 +547,7 @@ ETag: "1"
 
 ### 11.4 Error codes (stable contract)
 
-`VALIDATION_FAILED`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `RATE_LIMITED`, `OTP_INVALID`, `OTP_EXPIRED`, `OTP_ATTEMPTS_EXCEEDED`, `ACCOUNT_LOCKED`, `USER_INACTIVE`, `ACTIVE_USER_LIMIT_REACHED`, `FUND_NOT_ACTIVE`, `CATEGORY_INACTIVE`, `CATEGORY_DIRECTION_MISMATCH`, `ACCOUNT_INACTIVE`, `TRANSFER_SAME_ACCOUNT`, `AMOUNT_OUT_OF_RANGE`, `DATE_IN_FUTURE`, `BACKDATE_LIMIT_EXCEEDED`, `EDIT_WINDOW_EXPIRED`, `REASON_REQUIRED`, `REVISION_CONFLICT`, `TXN_CANCELLED_IMMUTABLE`, `ATTACHMENT_TYPE_NOT_ALLOWED`, `ATTACHMENT_TOO_LARGE`, `EXPORT_NOT_READY`.
+`VALIDATION_FAILED`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `RATE_LIMITED`, `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `PIN_CHANGE_REQUIRED`, `PIN_TOO_WEAK`, `USER_INACTIVE`, `ACTIVE_USER_LIMIT_REACHED`, `FUND_NOT_ACTIVE`, `CATEGORY_INACTIVE`, `CATEGORY_DIRECTION_MISMATCH`, `ACCOUNT_INACTIVE`, `TRANSFER_SAME_ACCOUNT`, `AMOUNT_OUT_OF_RANGE`, `DATE_IN_FUTURE`, `BACKDATE_LIMIT_EXCEEDED`, `EDIT_WINDOW_EXPIRED`, `REASON_REQUIRED`, `REVISION_CONFLICT`, `TXN_CANCELLED_IMMUTABLE`, `ATTACHMENT_TYPE_NOT_ALLOWED`, `ATTACHMENT_TOO_LARGE`, `EXPORT_NOT_READY`, `RECEIPT_NOT_AVAILABLE`.
 
 ---
 
@@ -534,10 +559,10 @@ Covers PRD §22, plus the engineering standard.
 |---|---|
 | TR-070 | HTTPS only. TLS 1.2+, HSTS (`max-age=31536000; includeSubDomains`). HTTP redirects to HTTPS. |
 | TR-071 | CORS uses a hard-coded allowlist of the PWA origins per environment. Credentials are allowed only for those origins. Wildcards are never used. |
-| TR-072 | Security headers: CSP with `default-src 'self'`, script hashes only and `connect-src` limited to the API + Sentry + PostHog; `X-Content-Type-Options: nosniff`; `Referrer-Policy: strict-origin-when-cross-origin`; `Permissions-Policy` that disables everything except camera, which is needed for receipt capture; `frame-ancestors 'none'`. |
-| TR-073 | Rate limiting uses the ASP.NET Core `RateLimiter`. Auth endpoints use the TR-013 limits. Authenticated users are limited to 300 req/min. Exports are limited to 10 per hour per user. A reverse-proxy limit sits in front as an abuse backstop. |
+| TR-072 | Security headers: CSP with `default-src 'self'`, script hashes only and `connect-src` limited to the API + Sentry + PostHog; `X-Content-Type-Options: nosniff`; `Referrer-Policy: strict-origin-when-cross-origin`; `Permissions-Policy` that disables everything except camera, which is needed to photograph bills; `frame-ancestors 'none'`. |
+| TR-073 | Rate limiting uses the ASP.NET Core `RateLimiter`. The login endpoint uses the TR-013 limits. Authenticated users are limited to 300 req/min. Exports are limited to 10 per hour per user. A reverse-proxy limit sits in front as an abuse backstop. |
 | TR-074 | Every request DTO is validated. Unknown JSON properties are rejected (`UnmappedMemberHandling.Disallow`). |
-| TR-075 | Secrets come only from environment or a secrets manager: DB passwords, JWT keys, OTP API key, storage keys, Sentry DSN (server). `.env*` files are git-ignored before the first commit. Gitleaks runs in CI and GitHub push protection is enabled. |
+| TR-075 | Secrets come only from environment or a secrets manager: DB passwords, JWT keys, receipt HMAC key, storage keys, Sentry DSN (server). `.env*` files are git-ignored before the first commit. Gitleaks runs in CI and GitHub push protection is enabled. |
 | TR-076 | Least-privilege DB roles as in [04-Backend-Schema §8](04-Backend-Schema.md). The app role has no DDL rights and no `DELETE` on financial or audit tables. |
 | TR-077 | PII minimization. The system stores only name, mobile and optional email. Mobile numbers are masked in logs (`+91******0002`). Audit `old_value`/`new_value` never contain secrets. |
 | TR-078 | Dependency scanning: `dotnet list package --vulnerable` and `npm audit` run in CI and fail on high or critical findings. Dependabot is enabled. |
@@ -592,8 +617,8 @@ The database enforces these rules itself, in addition to the API:
 | production | Live | Real | `app.<domain>`, `api.<domain>` |
 
 Rules:
-- Staging and production MUST NOT share databases, buckets, OTP credentials or JWT keys (Standard §7.1).
-- The OTP provider runs in sandbox or test mode on staging, with an allowlist of test numbers.
+- Staging and production MUST NOT share databases, buckets, JWT keys or receipt HMAC keys (Standard §7.1).
+- Staging uses only synthetic users and mobile numbers.
 
 ### 15.2 CI/CD (GitHub Actions)
 
@@ -627,8 +652,8 @@ Pipeline rules:
 | TR-095 | Structured JSON logs with `timestamp`, `level`, `requestId`, `userId`, `orgId`, `route`, `status` and `elapsedMs`. Never the request or response body for auth routes. |
 | TR-096 | Sentry runs in the API and the PWA, with release tagging and source maps uploaded privately. User context is the user ID only, with no phone number. |
 | TR-097 | An external uptime monitor checks `/health/ready` every minute from 2 or more regions. The status page is hosted on the monitor vendor. |
-| TR-098 | Business alerts: 0 transactions in 24 h on an active fund during its date range, a spike in sync `REJECTED`, OTP send failures over 10 % in 15 min, and export failures. |
-| TR-099 | Billing alerts at 50/75/90 % on the OTP provider, hosting, DB and storage. Hard caps are set where the vendor supports them. |
+| TR-098 | Business alerts: 0 transactions in 24 h on an active fund during its date range, a spike in sync `REJECTED`, failed logins over 50 in 15 min (possible brute force), and export failures. |
+| TR-099 | Billing alerts at 50/75/90 % on hosting, DB and storage. Hard caps are set where the vendor supports them. |
 
 ---
 
@@ -651,26 +676,26 @@ Pipeline rules:
 | ADR | Title | Status |
 |---|---|---|
 | [ADR-0001](adr/ADR-0001-technology-stack.md) | Technology stack and modular monolith | Accepted (PRD-mandated) |
-| [ADR-0002](adr/ADR-0002-authentication.md) | Authentication: managed OTP verification + ASP.NET Core session tokens | **Proposed — needs owner decision on provider** |
+| [ADR-0002](adr/ADR-0002-authentication.md) | Authentication: mobile number + PIN with ASP.NET Core session tokens | Accepted 07-Oct-2026 |
 | [ADR-0003](adr/ADR-0003-tenant-isolation-rls.md) | Tenant isolation with shared schema + PostgreSQL RLS | Accepted |
 | [ADR-0004](adr/ADR-0004-balance-model.md) | Org-level accounts, per-(fund, account) balances, computed not stored | Accepted |
 | [ADR-0005](adr/ADR-0005-offline-sync-idempotency.md) | Offline outbox with client UUIDs and server idempotency | Accepted |
-| [ADR-0006](adr/ADR-0006-hosting.md) | Hosting and managed PostgreSQL | **Proposed — needs owner decision** |
+| [ADR-0006](adr/ADR-0006-hosting.md) | Hosting: Neon + VPS (Docker/Caddy) + Cloudflare Pages/R2 | Accepted 07-Oct-2026 (domain pending) |
+| [ADR-0007](adr/ADR-0007-money-in-receipts.md) | Money In receipts (PDF + share) in V1 | Accepted 07-Oct-2026 |
 
 ---
 
-## 18. Open questions
+## 18. Product owner decisions (07-Oct-2026)
 
-These need the product owner's input. Each one has a default that will be used if no answer is given.
-
-| # | Question | Default if no answer |
+| # | Question | Decision |
 |---|---|---|
-| Q-01 | Which OTP provider? This depends on DLT registration status and budget (ADR-0002). | PIN fallback at launch; OTP enabled once the provider is approved |
-| Q-02 | Hosting and domain? (ADR-0006) | Neon Postgres + container host for the API, static PWA on a CDN |
-| Q-03 | Can Members backdate transactions? How many days? | 7 days |
-| Q-04 | Can Members cancel their own transaction inside the edit window? | No. Admin only. |
-| Q-05 | Should Members see other users' transactions in the ledger by default? | Yes (`can_view_all_txns = true`) |
-| Q-06 | Multiple Admins in V1? PRD §1 says "one or more", but §30 lists it as future. | Allowed. The role is per user, with no limit beyond 50 users. |
-| Q-07 | Max single-transaction amount? | ₹10,00,000 (configurable) |
-| Q-08 | Financial-year based numbering, or calendar year? | Indian FY (Apr–Mar) |
-| Q-09 | Is a receipt (PDF/share) for Money In needed in V1? | No. Future enhancement (WhatsApp sharing). |
+| Q-01 | OTP provider? | **OTP not required. Login is mobile + PIN** (ADR-0002). |
+| Q-02 | Hosting and domain? | **Recommended option approved** (ADR-0006). The domain name is still to be registered. |
+| Q-03 | Can Members backdate transactions? How many days? | **7 days** (`txn.backdate_days_member = 7`) |
+| Q-04 | Can Members cancel their own transaction inside the edit window? | **No. Admin only.** |
+| Q-05 | Should Members see other users' transactions in the ledger by default? | **Yes** (`can_view_all_txns = true` by default) |
+| Q-06 | Multiple Admins in V1? | **Allowed.** The role is per user, with no limit beyond the 50-user cap. |
+| Q-07 | Max single-transaction amount? | **₹10,00,000**, configurable (`txn.max_amount`) |
+| Q-08 | Financial-year or calendar-year numbering? | **Indian FY (Apr–Mar)** (`txn.number_period = FY_APR`) |
+| Q-09 | Is a receipt (PDF/share) for Money In needed in V1? | **Yes.** In scope for V1 (TRD §10.3, ADR-0007). |
+| Q-10 | Is there a hard event date requiring the fast-track? | **No.** The standard 13-week plan applies. |

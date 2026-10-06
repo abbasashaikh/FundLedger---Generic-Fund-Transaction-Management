@@ -1,0 +1,255 @@
+# FundLedger — Implementation Plan
+
+| Item | Value |
+|---|---|
+| Document | Implementation Plan v1.0 |
+| Derived from | PRD v1.1 §28 (MVP / Release Plan) · [01-TRD](01-TRD.md) · [02-App-Flow](02-App-Flow.md) · [04-Backend-Schema](04-Backend-Schema.md) |
+| Date | 06-Oct-2026 |
+| Assumed team | 1 full-stack developer + AI pair, with part-time product owner/tester. Durations scale down with more people. |
+| Cadence | 1-week sprints with a demo at the end of each sprint to the product owner |
+
+---
+
+## 1. Timeline overview
+
+The plan follows the six phases in PRD §28, plus a Phase 0 for setup. Phases 2–4 are vertical slices, so a usable ledger exists from week 5.
+
+| Phase | Weeks | Outcome | PRD |
+|---|---|---|---|
+| 0 — Project foundation | W1 | Repo, CI, environments, skeletons, ADRs signed off | — |
+| 1 — Foundation (identity) | W2–W3 | Admin/users, login (PIN first, OTP behind a flag), roles, fund access | §28 Ph1 |
+| 2 — Financial core | W4–W6 | Funds, accounts, categories, opening balances, In/Out/Transfer, ledger, balances | §28 Ph2 |
+| 3 — Accountability | W7 | Audit log, edit rules, cancellation, revisions, detail screen, adjustment | §28 Ph3 |
+| 4 — Reports | W8–W9 | Dashboard, 10 reports, XLSX/CSV/PDF async export | §28 Ph4 |
+| 5 — Offline & hardening | W10–W11 | IndexedDB outbox, sync, idempotency, attachments offline, security and restore testing | §28 Ph5 |
+| 6 — Production | W12–W13 | UAT, load test, ZAP, go-live, handover, onboarding | §28 Ph6 |
+
+```mermaid
+gantt
+  dateFormat  YYYY-MM-DD
+  title FundLedger V1 (13 weeks, starting Mon 12-Oct-2026)
+  section Build
+  P0 Foundation          :p0, 2026-10-12, 7d
+  P1 Identity            :p1, after p0, 14d
+  P2 Financial core      :p2, after p1, 21d
+  P3 Accountability      :p3, after p2, 7d
+  P4 Reports             :p4, after p3, 14d
+  P5 Offline & hardening :p5, after p4, 14d
+  section Release
+  P6 UAT & go-live       :p6, after p5, 14d
+```
+
+**Target go-live: week of 11-Jan-2027.**
+
+This date assumes:
+- The OTP provider decision (ADR-0002) is made by the end of W3.
+- The hosting decision (ADR-0006) is made by the end of W1.
+
+If an Ijtema event date requires an earlier go-live, see the fast-track option in §10.
+
+---
+
+## 2. Phase 0 — Project foundation (W1)
+
+| ID | Task | Done when |
+|---|---|---|
+| P0-01 | Monorepo layout: `api/` (.NET 10 solution per TRD §3.2), `web/` (Vite React TS), `database/`, `docs/`, `infra/` | Both apps build locally |
+| P0-02 | `.gitignore` + `.env.example`. Gitleaks pre-commit hook and CI step. GitHub push protection on. | A test secret commit is blocked |
+| P0-03 | Branch protection on `main`: PR required, checks required, no force push | Direct push rejected |
+| P0-04 | Docker Compose for local: Postgres 16, MinIO, Mailpit. `make dev` / `npm run dev` scripts. | One command brings everything up |
+| P0-05 | CI workflow: build, lint, typecheck, unit tests, schema verify (`schema.sql` + `verify_schema.sql`), dependency audit | Green on an empty PR |
+| P0-06 | EF Core initial migration embedding `schema.sql`. RLS session interceptor (TRD TR-002). | `verify_schema.sql` passes after `ef database update` |
+| P0-07 | API skeleton: ProblemDetails, request ID, Serilog JSON, health checks, OpenAPI, rate limiter, CORS allowlist, security headers | `/health/ready` is green; headers checked by test |
+| P0-08 | Web skeleton: router, layout shells (bottom nav / sidebar), design tokens (Design Brief §3), dark mode, i18n scaffold, PWA manifest + service worker | Lighthouse PWA installable |
+| P0-09 | Generated TypeScript API client from OpenAPI (CI fails if the generated client is stale) | |
+| P0-10 | Staging environment: DB (branch), API container, static PWA, object storage bucket, secrets in the platform store | A staging deploy from `main` works |
+| P0-11 | Sentry (API + web), uptime monitor on staging `/health/ready`, billing alerts | Test error visible in Sentry |
+| P0-12 | Sign-off on ADR-0001…0006 and decisions on the open questions (TRD §18) | Decisions recorded in the ADRs |
+
+**Exit criteria:** an empty app deploys to staging automatically from `main`, with observability live.
+
+---
+
+## 3. Phase 1 — Foundation / Identity (W2–W3)
+
+| ID | Task | Screens | Tests |
+|---|---|---|---|
+| P1-01 | Bootstrap CLI (`fundledger bootstrap`) + optional `/setup` wizard; default lookups seeded | S03 | Integration |
+| P1-02 | Domain: Organization, User, UserFundAccess; 50-user limit (API check + DB trigger mapped to 409) | — | Unit + concurrency test (51 parallel activations, exactly 50 succeed) |
+| P1-03 | Auth: `IOtpVerificationProvider` abstraction + **Console provider (dev)** + **PIN provider** | S01, S02 | Integration |
+| P1-04 | Sessions: JWT ES256 (15 min), refresh rotation with reuse detection, logout, revoke-on-deactivate | — | Token reuse test; logout-then-reuse test (Standard §2.8) |
+| P1-05 | Rate limits on auth (TRD TR-013); no-enumeration response for `otp/send` | — | Timing and shape parity test |
+| P1-06 | `GET /me`; client auth store (access token in memory, refresh via cookie) | — | E2E login |
+| P1-07 | Users admin: list, create, edit, status, fund access grid with presets | S18, S19 | Integration + E2E |
+| P1-08 | Authorization framework: policies, `IFundAccessGuard`, **two-user IDOR test harness** used by every later endpoint | — | Template test |
+| P1-09 | Audit writer (`IAuditWriter`) + auth/user events | — | Unit |
+| P1-10 | Real OTP provider adapter (after ADR-0002 decision), behind the `auth.method` setting | S02 | Sandbox test numbers |
+
+**Exit criteria (from PRD §29):**
+- An Admin-created active user can log in.
+- Inactive and unregistered users cannot log in.
+- The 51st activation is rejected.
+
+---
+
+## 4. Phase 2 — Financial core (W4–W6)
+
+| ID | Task | Screens | Tests |
+|---|---|---|---|
+| P2-01 | Funds: CRUD, lifecycle (draft → active → closed → archived), fund types | S20, S21 | State machine unit tests |
+| P2-02 | Accounts CRUD; opening balances per (fund, account) with reason + audit | S21, S22 | BR-015 test |
+| P2-03 | Categories (direction, fund scope, ordering), payment modes | S23, S24 | |
+| P2-04 | Ledger write service: validation pipeline (TRD §7.2), numbering, revision 1, audit | — | Unit + integration per business rule |
+| P2-05 | Endpoints `deposit` / `expense` / `transfer`; `clientTxnId` idempotency on the online path too | — | Duplicate POST returns the same transaction |
+| P2-06 | Balance views exposed via `/accounts/balances`, fund balance in responses | — | Worked example (Schema §4) as an integration test |
+| P2-07 | UI: `AmountInput`, `ChipGroup`, `AccountPicker`, `DateTimeField`, `ConfirmSheet` | — | Storybook + axe |
+| P2-08 | Money In / Money Out / Transfer forms with smart defaults, "Add another" | S08, S09, S10 | E2E: entry in ≤ 30 s scripted path |
+| P2-09 | Ledger list: grouping, search, filters, sort, totals bar, cursor paging; desktop table | S06 | Integration on filter combinations |
+| P2-10 | Fund switcher + global fund context; closed-fund read-only behaviour | S05 | E2E |
+| P2-11 | Basic dashboard (balance card, quick actions, recent); full version in Phase 4 | S04 | |
+
+**Exit criteria (from PRD §29):**
+- Money In, Money Out and Transfer are recorded with all required fields.
+- Transfers don't change the fund total.
+- Balances are correct.
+- A closed fund rejects new transactions.
+- A user cannot access an unassigned fund (IDOR suite green).
+
+---
+
+## 5. Phase 3 — Accountability (W7)
+
+| ID | Task | Screens | Tests |
+|---|---|---|---|
+| P3-01 | Transaction detail with accountability card and attachments strip | S07 | |
+| P3-02 | Edit: window rule, Admin reason, `If-Match` / 412, revision snapshot, field diff | S12 | Concurrency test (two editors) |
+| P3-03 | Cancel: Admin, reason, terminal state, excluded from balances | S07 | BR-013 + balance test |
+| P3-04 | History / diff view from `transaction_revisions` | S07 | |
+| P3-05 | Adjustment (Admin) with direction + reason | S11 | BR-016 test (Member → 403) |
+| P3-06 | Audit log screen with filters + diff view + CSV export | S25 | Member → 404 test |
+| P3-07 | Attachments online: upload, magic-byte check, re-encode images, signed download, hide | S07, S08/S09 | Cross-fund attachment access → 404 |
+
+**Exit criteria (from PRD §29):**
+- Creation, modification and cancellation are audited.
+- No hard-delete path exists. This is verified both by an API route scan test and by the DB grants.
+
+---
+
+## 6. Phase 4 — Reports (W8–W9)
+
+| ID | Task | Screens | Tests |
+|---|---|---|---|
+| P4-01 | Full dashboard: today strip, account balances, sync banner, 30-day chart, top categories | S04 | |
+| P4-02 | Report query layer for the 10 reports (TRD §10.1) incl. point-in-time opening balances | — | Golden-file tests on a fixed seed dataset |
+| P4-03 | Report hub + viewer (summary cards, table, mobile cards), "My transactions only" scope | S14, S15 | Permission-scope tests (BR-020) |
+| P4-04 | Export pipeline: `export_jobs`, worker, ClosedXML / CsvHelper / QuestPDF, private bucket, 60 s signed URL, 24 h expiry | S16 | Idempotency-Key test; audit `EXPORT_PERFORMED` |
+| P4-05 | PDF layout: header, footer, page numbers, Indian grouping, totals | — | Visual snapshot |
+| P4-06 | Settings screen | S26 | Audit test |
+
+**Exit criteria (from PRD §29):**
+- Daily, date-range, user-wise, category-wise and account-wise reports match hand-computed values on the seed dataset.
+- An authorized export works.
+- An unauthorized export returns 403.
+
+---
+
+## 7. Phase 5 — Offline & hardening (W10–W11)
+
+| ID | Task | Tests |
+|---|---|---|
+| P5-01 | Dexie stores (`outbox`, `refdata`, `ledgerCache`); refdata refresh strategy | Unit |
+| P5-02 | Sync engine: triggers, backoff, state machine (App Flow §4.8), user binding of outbox | Unit with fake timers |
+| P5-03 | `POST /sync/transactions` batch endpoint: per-item transaction, CREATED / DUPLICATE / REJECTED / RETRY | Race test: same batch sent twice in parallel produces no duplicates (PRD §29) |
+| P5-04 | Pending-sync UI: top-bar indicator, S13 screen, needs-attention edit/discard | E2E with Playwright `context.setOffline(true)` |
+| P5-05 | Offline attachments (Blob in IndexedDB → upload after sync) | E2E |
+| P5-06 | Service worker caching strategy: app shell precache, API `NetworkOnly` (no stale financial data from the SW cache), update prompt | Lighthouse + manual |
+| P5-07 | Security pass: authz matrix review, OWASP ZAP baseline on staging, header audit, dependency audit, secret scan of history | Findings triaged by severity; 0 high/critical open |
+| P5-08 | Backup: PITR confirmed, nightly off-site encrypted dump job, **first restore drill** recorded in `docs/ops/restore-log.md` | Restored DB passes verify + balance reconciliation |
+| P5-09 | Rollback rehearsal: deploy N, deploy N+1, roll back to N in under 2 minutes on staging | Timed and recorded |
+| P5-10 | Performance: seed 1 M transactions; `EXPLAIN ANALYZE` the ledger, dashboard and reports; fix any plan regressions | NFR table in TRD §13 |
+
+**Exit criteria (from PRD §29):**
+- An offline transaction syncs after reconnection.
+- The same client transaction cannot be inserted twice.
+
+---
+
+## 8. Phase 6 — Production (W12–W13)
+
+| ID | Task | Done when |
+|---|---|---|
+| P6-01 | Production environment provisioned (separate DB, bucket, keys, OTP credentials, domain, TLS) | Smoke tests pass |
+| P6-02 | k6 load test on staging: 50 VUs, mixed traffic, 10 min | p95 targets met |
+| P6-03 | UAT with 5–8 real users on staging using the Ijtema 2026 sample setup (PRD App. B). Script covers every PRD §29 row. | All criteria signed off by the product owner |
+| P6-04 | Timed entry test (≤ 30 s median), hallway test of ledger readability | Recorded |
+| P6-05 | PWA installation test: Android Chrome, Samsung Internet, desktop Chrome/Edge, iOS Safari (best effort) | Checklist |
+| P6-06 | Accessibility audit: axe clean + TalkBack pass on the critical path | 0 serious |
+| P6-07 | Privacy notice for members (what data is stored, who sees it); internal data-handling note | Published in More → About |
+| P6-08 | Ops runbook: deploy, rollback, restore, rotate secrets, OTP provider outage → switch to PIN mode, incident and post-mortem template | `docs/ops/` |
+| P6-09 | Go-live: bootstrap production org, create the fund, accounts, categories and users from the PRD App. B list | Admin logs in on production |
+| P6-10 | Admin handover session (1 h) + user onboarding (15 min, one-page guide with screenshots in English, plus Hindi/Urdu if needed) | Guides in `docs/guides/` |
+| P6-11 | Hypercare: 2 weeks of daily Sentry/uptime/sync-rejection review; weekly check-in with the Admin | Issues triaged |
+
+---
+
+## 9. Definition of Done (every story)
+
+These items come from the AI-Directed Engineering Standard and apply to every story.
+
+- [ ] Server-side validation + authorization. A two-user IDOR test exists for every new endpoint touching data.
+- [ ] Business rule covered by unit test. API covered by integration test against real Postgres with RLS on.
+- [ ] Audit event written for every mutation listed in App Flow §8.
+- [ ] No secrets in code. No PII, OTPs or tokens in logs.
+- [ ] UI states: loading, empty, error, offline, forbidden, closed-fund.
+- [ ] Accessible: labels, focus, contrast, 44 px targets; axe clean.
+- [ ] Strings externalized (i18n), amounts and dates through `lib/format`.
+- [ ] Migration (if any) has a rollback note and is expand-only.
+- [ ] Docs updated: TRD / App Flow / Schema when behaviour changes; new ADR for any non-trivial technical decision.
+- [ ] Deployed to staging via CI and demoed.
+
+---
+
+## 10. Fast-track option (if go-live is needed by ~W8)
+
+If a fund event cannot wait 13 weeks, ship an **MVP-0** at the end of W7 containing:
+
+| Included | Deferred to V1 (W13) |
+|---|---|
+| PIN login (no OTP) | OTP |
+| Users, fund access | Offline sync (online-only; show "No connection" instead) |
+| Funds, accounts, categories, opening balances | XLSX/PDF export (CSV only, synchronous with a 5,000-row cap) |
+| Money In / Out / Transfer, ledger, detail, balances | Attachments |
+| Edit window, Admin cancel, audit log | Adjustment UI (Admin can use cancel + new entry) |
+| Daily + fund summary reports | Other 8 reports |
+
+The non-negotiables stay in MVP-0:
+- staging gate
+- backups with one restore drill
+- Sentry and uptime monitoring
+- the IDOR suite
+- the DB-level rules
+
+---
+
+## 11. Risks & mitigations
+
+| # | Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|---|
+| R1 | No free OTP option. Indian SMS needs DLT registration (sender ID + template approval takes days to weeks). | High | Medium | Launch with PIN mode (BR-004 fallback). Start DLT registration in W1. The provider abstraction allows switching. |
+| R2 | Volunteers on low-end phones and poor network | High | High | Offline outbox, a small bundle budget, client image compression, 360 px design target |
+| R3 | Data-entry mistakes (wrong amount or category) | High | Medium | Confirmation sheet, 15-minute self-edit window, Admin edit with reason, cancellation |
+| R4 | Insider misuse (silent edits, hidden deletions) | Low | High | No delete anywhere, append-only audit + revisions at DB level, the creator always visible |
+| R5 | Offline duplicates or conflicts | Medium | High | Client UUIDs + DB unique constraint, server re-validation, NEEDS_ATTENTION state (never auto-forced) |
+| R6 | Lost data due to hosting failure | Low | Critical | PITR + off-site dumps + quarterly restore drills |
+| R7 | Scope creep toward accounting/ERP | Medium | Medium | PRD §3.2 out-of-scope list enforced; new requests go to the PRD §30 backlog |
+| R8 | iOS PWA limitations (install, background sync) | Medium | Low | Android-first per PRD; sync triggers on app open/online, so it doesn't rely on Background Sync |
+| R9 | Single developer bus factor | Medium | High | ADRs, this doc set, CLAUDE.md, runbooks, CI-enforced checks |
+
+---
+
+## 12. Decisions needed from the product owner (by end of W1)
+
+1. **OTP provider and budget.** Should DLT registration start now? Until it is approved, the app launches in PIN mode. (ADR-0002, TRD Q-01)
+2. **Hosting and domain** (ADR-0006, TRD Q-02).
+3. **Policy questions Q-03 to Q-09** in TRD §18. The listed defaults apply if there is no answer.
+4. **Go-live constraint:** is there an event date that requires the fast-track (§10)?

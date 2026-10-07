@@ -43,4 +43,11 @@ Users are mostly in India, so latency matters for phones on 3G/4G.
 | Off-site backups | Nightly encrypted `pg_dump` to Backblaze B2, a different provider from Neon and R2 |
 | Domain | **To be registered by the owner.** Planned layout: `app.<domain>` (PWA), `api.<domain>` (API), `staging.<domain>` / `api-staging.<domain>`, and a status page on the monitoring vendor's domain. |
 
-Record the exact plan tiers and regions in this ADR when the resources are created (Implementation Plan P0-10).
+## Provisioned resources
+
+| Resource | Status |
+|---|---|
+| Neon project `fundledger` (`damp-meadow-79622001`) | **Created 07-Oct-2026.** Region `aws-ap-southeast-1` (Singapore; Neon has no India region), PostgreSQL 17, Free plan. Branches `production` + `staging`, schema applied and verified. Details: [docs/ops/database-setup.md](../ops/database-setup.md). |
+| VPS, Cloudflare Pages/R2, Backblaze B2, domain | Not yet created (Phase 0, P0-10) |
+
+**Before go-live:** upgrade Neon from Free. The Free plan allows a 6-hour restore window, below the 7-day PITR requirement, and has no protected-branch slot left.

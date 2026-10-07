@@ -15,9 +15,11 @@ SET search_path = fl, public;
 -- Login role standing in for the API (member of the runtime role only)
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fl_api_test') THEN
-    CREATE ROLE fl_api_test LOGIN PASSWORD 'test' IN ROLE fundledger_app;
+    CREATE ROLE fl_api_test NOLOGIN IN ROLE fundledger_app;   -- SET ROLE target only; never logs in
   END IF;
 END $$;
+-- Needed on managed hosts (Neon) where the owner is not superuser: allow SET ROLE.
+GRANT fl_api_test TO CURRENT_USER;
 
 -- ---- seed as the API role, with tenant context ------------------------------
 SET ROLE fl_api_test;

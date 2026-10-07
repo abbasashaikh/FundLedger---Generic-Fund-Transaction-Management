@@ -693,8 +693,19 @@ $$ SELECT * FROM fl.user_sessions WHERE refresh_token_hash = p_hash $$;
 
 GRANT USAGE ON SCHEMA fl TO fundledger_auth_definer;
 GRANT SELECT ON fl.users, fl.organizations, fl.user_sessions TO fundledger_auth_definer;
+-- PG16+: transferring ownership requires the current role to be able to SET ROLE
+-- to the new owner (managed hosts like Neon do not run migrations as superuser).
+-- The new owner also needs CREATE on the schema at transfer time.
+-- Grant both temporarily, transfer, then revoke so no login role keeps the path.
+-- Pre-auth functions return PIN hashes: only the API role may execute them.
+REVOKE EXECUTE ON FUNCTION fl.auth_find_user_by_mobile(varchar), fl.auth_find_session(bytea) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION fl.auth_find_user_by_mobile(varchar), fl.auth_find_session(bytea) TO fundledger_app;
+GRANT fundledger_auth_definer TO CURRENT_USER;
+GRANT CREATE ON SCHEMA fl TO fundledger_auth_definer;
 ALTER FUNCTION fl.auth_find_user_by_mobile(varchar) OWNER TO fundledger_auth_definer;
 ALTER FUNCTION fl.auth_find_session(bytea)          OWNER TO fundledger_auth_definer;
+REVOKE CREATE ON SCHEMA fl FROM fundledger_auth_definer;
+REVOKE fundledger_auth_definer FROM CURRENT_USER;
 
 -- =============================================================================
 -- 14. Grants (least privilege, PRD §22 / Standard §2.5)
@@ -714,6 +725,8 @@ GRANT SELECT, INSERT ON fl.login_attempts TO fundledger_app;                    
 GRANT SELECT ON fl.v_account_movements, fl.v_fund_account_balances, fl.v_fund_balances
   TO fundledger_app, fundledger_readonly;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA fl TO fundledger_app;
+-- (Emits two harmless "no privileges were granted" notices for the auth_* functions:
+--  they are owned by fundledger_auth_definer and were granted explicitly in section 13.)
 -- NOTE: no DELETE on transactions, audit_logs, revisions, attachments (BR-012).
 
 COMMIT;

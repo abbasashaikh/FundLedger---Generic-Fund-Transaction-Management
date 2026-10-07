@@ -11,5 +11,5 @@ internal sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<F
     public FundLedgerDbContext CreateDbContext(string[] args) =>
         DependencyInjection.CreateMigrationContext(
             Environment.GetEnvironmentVariable("FUNDLEDGER_MIGRATIONS_DB")
-            ?? "Host=localhost;Port=5432;Database=fundledger;Username=postgres;Password=unused-at-design-time");
+            ?? "Host=localhost;Database=fundledger");   // never opened at design time
 }

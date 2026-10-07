@@ -130,7 +130,12 @@ jobs:
           docker run -d --name api -p 8080:8080 \
             -e ConnectionStrings__FundLedger="Host=127.0.0.1;Port=1;Database=x;Username=x;Password=x" \
             fundledger-api:ci
-          for i in $(seq 1 30); do curl -fsS http://localhost:8080/health/live && break; sleep 1; done
+          ok=""
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health/live; then ok=1; break; fi
+            sleep 1
+          done
+          if [ -z "$ok" ]; then echo "--- container logs ---"; docker logs api; exit 1; fi
           curl -fsS http://localhost:8080/api/v1/version | grep -q "$GITHUB_SHA"
           test "$(docker exec api id -u)" != "0"
           docker rm -f api

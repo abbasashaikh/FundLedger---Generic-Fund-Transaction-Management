@@ -28,25 +28,35 @@
 
 ## First-time setup
 
-1. Start the local services:
+Local passwords are never committed. You choose them once, and they stay on your machine.
+
+1. Copy `.env.example` to `.env` and set `FL_LOCAL_PG_PASSWORD` and `FL_LOCAL_MINIO_PASSWORD` to values of your choice.
+
+2. Start the local services:
 
 ```bash
 docker compose up -d
 ```
 
-2. Apply migrations to the local database as its superuser:
+3. Apply migrations to the local database as its superuser:
 
 ```bash
-cd api && ConnectionStrings__Migrations="Host=localhost;Port=5433;Database=fundledger;Username=postgres;Password=fundledger_local_only" dotnet run --project src/FundLedger.Api -- migrate
+cd api && ConnectionStrings__Migrations="Host=localhost;Port=5433;Database=fundledger;Username=postgres;Password=<FL_LOCAL_PG_PASSWORD>" dotnet run --project src/FundLedger.Api -- migrate
 ```
 
-3. Create the local API login role:
+4. Create the local API login role, choosing a password for it:
 
 ```bash
-docker compose exec -T postgres psql -U postgres -d fundledger -f - < database/dev/create_dev_app_role.sql
+docker compose exec -T postgres psql -U postgres -d fundledger -v app_password='<dev-app-password>' -f - < database/dev/create_dev_app_role.sql
 ```
 
-4. Install the web dependencies:
+5. Point the API at it. This is stored in your user profile, not the repo:
+
+```bash
+cd api && dotnet user-secrets set "ConnectionStrings:FundLedger" "Host=localhost;Port=5433;Database=fundledger;Username=fl_api_dev;Password=<dev-app-password>" --project src/FundLedger.Api
+```
+
+6. Install the web dependencies:
 
 ```bash
 cd web && npm ci
@@ -54,7 +64,7 @@ cd web && npm ci
 
 ### Without Docker
 
-You can point the API at the Neon **staging** branch for local work. The setting is stored in your user profile, outside the repo, and overrides `appsettings.Development.json`:
+You can point the API at the Neon **staging** branch for local work instead. The setting is stored in your user profile, outside the repo:
 
 ```bash
 cd api && dotnet user-secrets set "ConnectionStrings:FundLedger" "<fl_api_staging pooled URL>" --project src/FundLedger.Api

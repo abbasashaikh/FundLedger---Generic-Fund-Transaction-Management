@@ -1,6 +1,6 @@
 # Local development dependencies ONLY (not used on servers).
 #   docker compose up -d
-# Credentials below are local-only placeholders; never reuse them anywhere else.
+# Local passwords come from ./.env (git-ignored); copy .env.example to .env first.
 name: fundledger-dev
 
 services:
@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: fundledger
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: fundledger_local_only
+      POSTGRES_PASSWORD: ${FL_LOCAL_PG_PASSWORD:?set FL_LOCAL_PG_PASSWORD in .env}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -24,7 +24,7 @@ services:
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: fundledger
-      MINIO_ROOT_PASSWORD: fundledger_local_only
+      MINIO_ROOT_PASSWORD: ${FL_LOCAL_MINIO_PASSWORD:?set FL_LOCAL_MINIO_PASSWORD in .env}
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"

@@ -1,12 +1,18 @@
 using FundLedger.Api.Hosting;
-using FundLedger.Infrastructure;
 using Serilog;
 
-// `dotnet FundLedger.Api.dll migrate` applies EF migrations as the schema owner
-// (ConnectionStrings__Migrations) and exits. Used by CI/CD before each deploy.
-if (args.Length > 0 && args[0] == "migrate")
+// Operator commands (run and exit): `migrate` (schema owner, CI/CD), `bootstrap`
+// (first organization + Admin), `generate-jwt-key` (ES256 signing key).
+switch (args.FirstOrDefault())
 {
-    return await MigrateCommand.RunAsync(args[1..]).ConfigureAwait(false);
+    case "migrate":
+        return await MigrateCommand.RunAsync(args[1..]).ConfigureAwait(false);
+    case "bootstrap":
+        return await OperatorCommands.BootstrapAsync(args[1..]).ConfigureAwait(false);
+    case "generate-jwt-key":
+        return OperatorCommands.GenerateJwtKey();
+    default:
+        break;
 }
 
 Log.Logger = LoggingSetup.CreateBootstrapLogger();
@@ -14,7 +20,6 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
     builder.AddFundLedgerApi();
-    builder.Services.AddFundLedgerInfrastructure(builder.Configuration);
 
     var app = builder.Build();
     app.UseFundLedgerPipeline();

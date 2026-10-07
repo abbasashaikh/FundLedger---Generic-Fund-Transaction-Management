@@ -4,7 +4,7 @@
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
     <!-- Test code: allow test-style naming and skip library-only analyzers -->
-    <NoWarn>$(NoWarn);CA1707;CA2007;CA1515;CA1861</NoWarn>
+    <NoWarn>$(NoWarn);CA1707;CA2007;CA1515;CA1861;CA1822;CA2000;CA2234</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

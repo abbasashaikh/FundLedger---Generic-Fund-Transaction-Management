@@ -724,9 +724,19 @@ GRANT SELECT, INSERT ON fl.audit_logs, fl.transaction_revisions TO fundledger_ap
 GRANT SELECT, INSERT ON fl.login_attempts TO fundledger_app;                      -- no tenant (pre-auth)
 GRANT SELECT ON fl.v_account_movements, fl.v_fund_account_balances, fl.v_fund_balances
   TO fundledger_app, fundledger_readonly;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA fl TO fundledger_app;
--- (Emits two harmless "no privileges were granted" notices for the auth_* functions:
---  they are owned by fundledger_auth_definer and were granted explicitly in section 13.)
+-- Grant EXECUTE on the functions this role owns. (A blanket "ON ALL FUNCTIONS" grant
+-- FAILS on non-superuser hosts such as Neon: the auth_* functions belong to
+-- fundledger_auth_definer and PUBLIC no longer has EXECUTE on them; they were granted
+-- explicitly in section 13.)
+DO $$
+DECLARE f regprocedure;
+BEGIN
+  FOR f IN SELECT p.oid::regprocedure FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'fl' AND p.proowner = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+  LOOP
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO fundledger_app', f);
+  END LOOP;
+END $$;
 -- NOTE: no DELETE on transactions, audit_logs, revisions, attachments (BR-012).
 
 COMMIT;

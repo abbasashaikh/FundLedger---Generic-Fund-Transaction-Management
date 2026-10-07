@@ -4,11 +4,21 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FundLedger.Api.Endpoints;
 using FundLedger.Api.Middleware;
+using FundLedger.Application;
+using FundLedger.Application.Abstractions;
+using FundLedger.Infrastructure;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 
 namespace FundLedger.Api.Hosting;
+
+/// <summary>Named rate-limit policies (TR-013/TR-073).</summary>
+internal static class RateLimitPolicies
+{
+    /// <summary>Per client IP: 20 login attempts per 15 minutes (per-mobile lockout is in AuthService).</summary>
+    public const string Login = "login";
+}
 
 internal static class ApiSetup
 {
@@ -38,7 +48,9 @@ internal static class ApiSetup
         {
             o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             o.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow; // TR-074
-            o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;   // numbers must be JSON numbers (and are typed so in OpenAPI)
+            // Enums on the wire match the database labels: "ADMIN", "MONEY_IN", ...
+            o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper));
         });
 
         services.AddProblemDetails(o => o.CustomizeProblemDetails = ctx =>
@@ -50,6 +62,16 @@ internal static class ApiSetup
 
         services.AddOpenApi("v1");
 
+        services.AddFundLedgerApplication();
+        services.AddFundLedgerInfrastructure(config, sp =>
+        {
+            var env = sp.GetRequiredService<IHostEnvironment>();
+            return env.IsDevelopment() || env.IsEnvironment("Testing");
+        });
+        services.AddHttpContextAccessor();
+        services.AddScoped<IRequestContext, HttpRequestContext>();
+        services.AddFundLedgerAuth();
+
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
@@ -59,7 +81,7 @@ internal static class ApiSetup
             .WithOrigins(origins)
             .AllowCredentials()
             .WithMethods("GET", "POST", "PUT", "PATCH")
-            .WithHeaders("Authorization", "Content-Type", "If-Match", "Idempotency-Key", "X-Request-Id")
+            .WithHeaders("Authorization", "Content-Type", "If-Match", "Idempotency-Key", "X-Request-Id", AuthEndpoints.ClientHeader)
             .WithExposedHeaders("ETag", "X-Request-Id", "Retry-After")));
 
         // TR-073: per-client limit; stricter auth/export policies are added in their phases.
@@ -78,6 +100,14 @@ internal static class ApiSetup
                             Window = TimeSpan.FromMinutes(1),
                             QueueLimit = 0,
                         }));
+            o.AddPolicy(RateLimitPolicies.Login, ctx => RateLimitPartition.GetFixedWindowLimiter(
+                "login:" + (ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = config.GetValue("RateLimiting:LoginPerIpPer15Min", 20),
+                    Window = TimeSpan.FromMinutes(15),
+                    QueueLimit = 0,
+                }));
             o.OnRejected = async (ctx, ct) =>
             {
                 if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
@@ -131,6 +161,9 @@ internal static class ApiSetup
 
         app.UseCors(CorsPolicy);
         app.UseRateLimiter();
+        app.UseAuthentication();
+        app.UseMiddleware<SessionValidationMiddleware>();
+        app.UseAuthorization();
         return app;
     }
 
@@ -138,6 +171,8 @@ internal static class ApiSetup
     {
         HealthEndpoints.Map(app);
         SystemEndpoints.Map(app);
+        AuthEndpoints.Map(app);
+        UserEndpoints.Map(app);
 
         // The OpenAPI document is published outside production only (TRD §11.1).
         if (!app.Environment.IsProduction())

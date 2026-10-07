@@ -1,5 +1,8 @@
 {
-  "app": { "name": "FundLedger" },
+  "app": {
+    "name": "FundLedger",
+    "loading": "Loading…"
+  },
   "nav": {
     "home": "Home",
     "ledger": "Ledger",
@@ -15,18 +18,32 @@
     "audit": "Audit log",
     "settings": "Settings",
     "skipToContent": "Skip to main content",
-    "primary": "Primary"
+    "primary": "Primary",
+    "account": "Account"
   },
-  "fund": { "noneSelected": "No fund selected", "switch": "Switch fund" },
+  "fund": {
+    "noneSelected": "No fund selected",
+    "switch": "Switch fund"
+  },
   "actions": {
     "moneyIn": "Money In",
     "moneyOut": "Money Out",
     "transfer": "Transfer",
     "adjustment": "Adjustment (Admin)",
-    "close": "Close"
+    "close": "Close",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save changes"
   },
-  "sync": { "allSynced": "All entries synced" },
-  "theme": { "label": "Theme", "system": "System", "light": "Light", "dark": "Dark" },
+  "sync": {
+    "allSynced": "All entries synced"
+  },
+  "theme": {
+    "label": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "placeholder": {
     "title": "{{screen}}",
     "body": "This screen arrives in {{phase}} of the implementation plan."
@@ -56,10 +73,115 @@
     "apiUnreachable": "Can't reach the server right now.",
     "checking": "Checking…"
   },
-  "notFound": { "body": "This page doesn't exist or you don't have access to it.", "home": "Go to Home" },
+  "notFound": {
+    "body": "This page doesn't exist or you don't have access to it.",
+    "home": "Go to Home"
+  },
   "pwa": {
     "updateAvailable": "New version available.",
     "refresh": "Refresh",
     "offline": "You're offline. New entries will be saved on this device and synced later."
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again."
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "mobile": "Mobile number",
+    "pin": "PIN",
+    "signInButton": "Sign in",
+    "forgotPin": "Forgot PIN?",
+    "forgotPinBody": "Ask your Admin to reset your PIN. They will give you a temporary PIN.",
+    "onlyRegistered": "Only members registered by your Admin can sign in.",
+    "lockedFor": "Too many attempts. Try again in {{minutes}} minutes.",
+    "showPin": "Show PIN",
+    "hidePin": "Hide PIN",
+    "setPinTitle": "Choose your PIN",
+    "setPinIntro": "Welcome {{name}}. Replace your temporary PIN with one only you know.",
+    "temporaryPin": "Temporary PIN",
+    "currentPin": "Current PIN",
+    "newPin": "New PIN",
+    "confirmPin": "Confirm new PIN",
+    "pinRules": "6 digits. Avoid repeated digits, sequences like 123456, or the end of your mobile number.",
+    "pinMismatch": "The PINs don't match.",
+    "savePin": "Save PIN",
+    "pinChanged": "PIN updated. Your other devices have been signed out.",
+    "changePin": "Change PIN",
+    "signOut": "Sign out",
+    "signOutTitle": "Sign out?",
+    "signOutBody": "You will need your mobile number and PIN to sign in again on this device."
+  },
+  "users": {
+    "activeCounter": "Active users: {{active}} / {{max}}",
+    "limitReached": "You've reached the active-user limit. Deactivate a user to add another.",
+    "add": "Add user",
+    "create": "Create user",
+    "search": "Search by name or mobile",
+    "status": "Status",
+    "allStatuses": "All statuses",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "none": "No users match.",
+    "roleAdmin": "Admin",
+    "roleMember": "Member",
+    "pinPending": "Temporary PIN",
+    "lastLogin": "Last sign-in {{when}}",
+    "neverSignedIn": "Never signed in",
+    "fundCount_one": "{{count}} fund",
+    "fundCount_other": "{{count}} funds",
+    "backToList": "Back to users",
+    "identity": "Details",
+    "fullName": "Full name",
+    "email": "Email",
+    "role": "Role",
+    "cannotChangeOwnRole": "You can't change your own role.",
+    "fundAccess": "Fund access",
+    "adminAllFunds": "Admins have access to every fund.",
+    "noFundsYet": "No funds exist yet. Create funds first (Administration → Funds), then grant access here.",
+    "preset": "Apply preset",
+    "presets": {
+      "collector": "Collector (money in)",
+      "spender": "Spender (money out)",
+      "treasurer": "Treasurer (all)",
+      "viewer": "Viewer (reports)"
+    },
+    "flags": {
+      "canMoneyIn": "Money In",
+      "canMoneyOut": "Money Out",
+      "canTransfer": "Transfer",
+      "canViewReports": "View reports",
+      "canExport": "Export",
+      "canViewAllTxns": "See all transactions"
+    },
+    "security": "Sign-in & security",
+    "resetPin": "Reset PIN",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "deactivateTitle": "Deactivate {{name}}?",
+    "deactivateBody": "{{name}} will be signed out on all devices immediately. Their past transactions are kept.",
+    "resetPinTitle": "Reset PIN for {{name}}?",
+    "resetPinBody": "A new temporary PIN will be created and they'll be signed out everywhere. They must choose their own PIN at next sign-in.",
+    "tempPinTitle": "Temporary PIN",
+    "tempPinBody": "Give this PIN to {{name}} in person or by phone. They must change it when they first sign in.",
+    "tempPinAria": "Temporary PIN: {{pin}}",
+    "tempPinWarning": "This PIN won't be shown again. If it's lost, reset the PIN.",
+    "tempPinDone": "I've noted it",
+    "copy": "Copy PIN",
+    "copied": "Copied",
+    "sessions": "Signed-in devices",
+    "signOutAll": "Sign out everywhere",
+    "noSessions": "Not signed in on any device.",
+    "unknownDevice": "Unknown device",
+    "thisDevice": "This device",
+    "lastActive": "active {{when}}",
+    "signOut": "Sign out"
+  },
+  "funds": {
+    "status": {
+      "DRAFT": "Draft",
+      "ACTIVE": "Active",
+      "CLOSED": "Closed",
+      "ARCHIVED": "Archived"
+    }
   }
 }

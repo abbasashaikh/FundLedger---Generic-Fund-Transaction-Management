@@ -7,6 +7,6 @@ if [ "$#" -gt 0 ]; then shift; fi
 case "$cmd" in
   api)     exec dotnet /app/api/FundLedger.Api.dll "$@" ;;
   worker)  exec dotnet /app/worker/FundLedger.Worker.dll "$@" ;;
-  migrate) exec dotnet /app/api/FundLedger.Api.dll migrate "$@" ;;
-  *)       echo "usage: [api|worker|migrate [--list]]" >&2; exit 64 ;;
+  migrate|bootstrap|generate-jwt-key) exec dotnet /app/api/FundLedger.Api.dll "$cmd" "$@" ;;
+  *)       echo "usage: [api|worker|migrate [--list]|bootstrap ...|generate-jwt-key]" >&2; exit 64 ;;
 esac

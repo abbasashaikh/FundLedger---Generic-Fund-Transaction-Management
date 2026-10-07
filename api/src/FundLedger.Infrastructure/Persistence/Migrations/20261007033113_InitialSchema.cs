@@ -12,6 +12,12 @@ namespace FundLedger.Infrastructure.Persistence.Migrations
     /// Rule for later changes: write a NEW migration (SQL via <c>migrationBuilder.Sql</c>
     /// where EF can't express it) and update <c>database/schema.sql</c> to match.
     /// CI's schema-drift job fails if the two diverge. Never edit this file or its SQL.
+    ///
+    /// One documented exception (07-Oct-2026, Phase 1): the function-grant statement in the
+    /// SQL was corrected because it failed on fresh databases on non-superuser hosts. No
+    /// environment had executed this migration's SQL — Neon production and staging were
+    /// baselined (database/ops/2026-10-07_baseline_ef_history.sql) — and the resulting
+    /// privileges are identical.
     /// </summary>
     public partial class InitialSchema : Migration
     {

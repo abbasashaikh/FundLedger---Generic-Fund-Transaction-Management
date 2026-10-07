@@ -1,0 +1,128 @@
+name: Deploy
+
+# main  -> staging (automatic after CI-equivalent build)
+# v*    -> production (requires approval on the "production" GitHub Environment)
+# Disabled until repository variable DEPLOY_ENABLED=true (set once the VPS,
+# Cloudflare and secrets exist — see docs/ops/deployment.md).
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/abbasashaikh/fundledger-api
+
+jobs:
+  ci:
+    if: vars.DEPLOY_ENABLED == 'true'
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  image:
+    needs: ci
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: |
+          echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0-main.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: api
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: image
+    runs-on: ubuntu-24.04
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
+    env:
+      ENV_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
+      TAG: ${{ needs.image.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 1. Migrations run HERE with the owner role; the VPS never holds owner credentials.
+      - name: Apply database migrations
+        env:
+          ConnectionStrings__Migrations: ${{ secrets.DB_MIGRATIONS_URL }}
+        run: docker run --rm -e ConnectionStrings__Migrations "$IMAGE:$TAG" migrate
+
+      # 2. API + worker on the VPS (health-gated, auto-restores previous tag on failure).
+      - name: Deploy API to VPS
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS: ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          SSH="ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes"
+          scp -i ~/.ssh/id_deploy infra/vps/app/docker-compose.yml infra/vps/app/deploy.sh "$VPS:/opt/fundledger/$ENV_NAME/"
+          $SSH "$VPS" "chmod +x /opt/fundledger/$ENV_NAME/deploy.sh && /opt/fundledger/$ENV_NAME/deploy.sh $ENV_NAME $TAG"
+
+      # 3. PWA to Cloudflare Pages, built against this environment's API.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build PWA
+        working-directory: web
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          npm ci
+          npm run build
+          # Source maps are uploaded privately (Sentry, later) — never served publicly.
+          find dist -name '*.map' -delete
+      - name: Publish PWA to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy web/dist --project-name=${{ vars.PAGES_PROJECT }} --branch=main --commit-hash=${{ github.sha }}
+
+      # 4. Smoke test: the running API is the build we just deployed.
+      - name: Smoke test
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          curl -fsS "$API_BASE_URL/health/ready"
+          commit="$(curl -fsS "$API_BASE_URL/api/v1/version" | jq -r .commit)"
+          test "$commit" = "$GITHUB_SHA" || { echo "running $commit, expected $GITHUB_SHA"; exit 1; }

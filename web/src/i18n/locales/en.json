@@ -1,0 +1,65 @@
+{
+  "app": { "name": "FundLedger" },
+  "nav": {
+    "home": "Home",
+    "ledger": "Ledger",
+    "reports": "Reports",
+    "more": "More",
+    "add": "Add transaction",
+    "administration": "Administration",
+    "users": "Users",
+    "funds": "Funds",
+    "accounts": "Accounts",
+    "categories": "Categories",
+    "lookups": "Lookups",
+    "audit": "Audit log",
+    "settings": "Settings",
+    "skipToContent": "Skip to main content",
+    "primary": "Primary"
+  },
+  "fund": { "noneSelected": "No fund selected", "switch": "Switch fund" },
+  "actions": {
+    "moneyIn": "Money In",
+    "moneyOut": "Money Out",
+    "transfer": "Transfer",
+    "adjustment": "Adjustment (Admin)",
+    "close": "Close"
+  },
+  "sync": { "allSynced": "All entries synced" },
+  "theme": { "label": "Theme", "system": "System", "light": "Light", "dark": "Dark" },
+  "placeholder": {
+    "title": "{{screen}}",
+    "body": "This screen arrives in {{phase}} of the implementation plan."
+  },
+  "screens": {
+    "dashboard": "Dashboard",
+    "ledger": "Ledger",
+    "reports": "Reports",
+    "more": "More",
+    "login": "Sign in",
+    "newIn": "Money In",
+    "newOut": "Money Out",
+    "newTransfer": "Transfer between accounts",
+    "users": "Users",
+    "funds": "Funds",
+    "accounts": "Accounts",
+    "categories": "Categories",
+    "lookups": "Payment modes & fund types",
+    "audit": "Audit log",
+    "settings": "Settings",
+    "notFound": "Page not found"
+  },
+  "system": {
+    "title": "System info",
+    "apiVersion": "API version",
+    "apiEnvironment": "API environment",
+    "apiUnreachable": "Can't reach the server right now.",
+    "checking": "Checking…"
+  },
+  "notFound": { "body": "This page doesn't exist or you don't have access to it.", "home": "Go to Home" },
+  "pwa": {
+    "updateAvailable": "New version available.",
+    "refresh": "Refresh",
+    "offline": "You're offline. New entries will be saved on this device and synced later."
+  }
+}

@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:          # deploy.yml runs the full CI before building an image
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API — build, test, checks
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: api
+    env:
+      FUNDLEDGER_REQUIRE_DB_TESTS: "true"   # Testcontainers must run; never skip DB tests in CI
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: api/global.json
+      - run: dotnet tool restore
+      - name: Build (warnings are errors)
+        run: dotnet build -c Release
+      - name: OpenAPI document is committed and current
+        run: git diff --exit-code -- openapi/
+      - name: Test (unit + integration against PostgreSQL 17 via Testcontainers)
+        run: dotnet test -c Release --no-build
+      - name: EF model has no unmigrated changes
+        run: dotnet ef migrations has-pending-model-changes --project src/FundLedger.Infrastructure --startup-project src/FundLedger.Infrastructure
+      - name: No known-vulnerable packages
+        run: |
+          dotnet list package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then exit 1; fi
+
+  schema:
+    name: Database — schema.sql == migrations, business rules
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: ci
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: api/global.json
+      - name: Create two empty databases
+        run: |
+          psql -d postgres -c "CREATE DATABASE from_sql"
+          psql -d postgres -c "CREATE DATABASE from_migrations"
+      - name: Build database A from database/schema.sql
+        run: psql -d from_sql -v ON_ERROR_STOP=1 -q -f database/schema.sql
+      - name: Build database B from EF migrations
+        env:
+          ConnectionStrings__Migrations: Host=localhost;Database=from_migrations;Username=postgres;Password=ci
+        run: dotnet run --project api/src/FundLedger.Api -c Release -- migrate
+      - name: Schema drift check (A must equal B)
+        run: |
+          dump() {
+            docker run --rm --network host -e PGPASSWORD=ci postgres:17 \
+              pg_dump -h localhost -U postgres -d "$1" --schema-only --schema=fl \
+              --exclude-table=fl.__ef_migrations_history \
+            | grep -vE '^\\(un)?restrict ' > "$1.sql"
+          }
+          dump from_sql
+          dump from_migrations
+          diff -u from_sql.sql from_migrations.sql
+      - name: Business-rule verification on both databases
+        run: |
+          for db in from_sql from_migrations; do
+            psql -d "$db" -v ON_ERROR_STOP=1 -q -f database/verify_schema.sql | tee "verify-$db.log"
+            grep -q "ALL CHECKS PASSED" "verify-$db.log"
+          done
+
+  web:
+    name: Web — lint, typecheck, test, build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Typed API client matches the OpenAPI document
+        run: npm run check:api
+      - name: Production build
+        env:
+          VITE_API_BASE_URL: https://api.example.invalid
+        run: npm run build
+      - name: No high/critical npm advisories
+        run: npm audit --audit-level=high
+
+  image:
+    name: Docker image builds and starts
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (not pushed)
+        run: docker build --build-arg GIT_SHA="$GITHUB_SHA" -t fundledger-api:ci api
+      - name: API container answers /health/live as non-root
+        run: |
+          docker run -d --name api -p 8080:8080 \
+            -e ConnectionStrings__FundLedger="Host=127.0.0.1;Port=1;Database=x;Username=x;Password=x" \
+            fundledger-api:ci
+          for i in $(seq 1 30); do curl -fsS http://localhost:8080/health/live && break; sleep 1; done
+          curl -fsS http://localhost:8080/api/v1/version | grep -q "$GITHUB_SHA"
+          test "$(docker exec api id -u)" != "0"
+          docker rm -f api
+      - name: Worker and migrate entrypoints resolve
+        run: |
+          docker run --rm fundledger-api:ci migrate --list 2>&1 | grep -q "ConnectionStrings__Migrations is not set"
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

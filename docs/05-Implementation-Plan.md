@@ -64,6 +64,37 @@ All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining d
 
 **Exit criteria:** an empty app deploys to staging automatically from `main`, with observability live.
 
+### Phase 0 status (07-Oct-2026)
+
+| ID | Status | Notes |
+|---|---|---|
+| P0-01 | ✅ Done | `api/` (.NET 10 modular monolith), `web/` (React 19 + Vite PWA), `database/`, `infra/`, `docs/` |
+| P0-02 | ✅ Done | `.gitignore`, `.env.example` files, Gitleaks job in CI. **Owner:** turn on GitHub push protection (Settings → Code security). |
+| P0-03 | ⏳ Owner | Branch protection on `main`. This is a repo setting, so I did not change it without approval; see [deployment.md §C](ops/deployment.md). |
+| P0-04 | ✅ Done | `docker-compose.yml` (Postgres 17 on 5433 + MinIO). Mailpit dropped, because there is no email or OTP in V1. |
+| P0-05 | ✅ Done | `ci.yml`: API build/test (Testcontainers), schema drift + business rules, web lint/typecheck/test/build, Docker image build, secret scan, vulnerable-package checks |
+| P0-06 | ✅ Done | EF initial migration embeds the verified schema. Tenant context per transaction (ADR-0008). Neon prod/staging baselined (`database/ops/2026-10-07_baseline_ef_history.sql`). |
+| P0-07 | ✅ Done | ProblemDetails with codes, request IDs, Serilog JSON, health live/ready, OpenAPI, rate limiter, CORS allowlist, security headers, `migrate` command |
+| P0-08 | ✅ Done | Router with all App Flow routes, mobile bottom-nav and desktop sidebar shells, design tokens with dark mode, i18n, PWA manifest/icons/service worker with update prompt, offline banner |
+| P0-09 | ✅ Done | `api/openapi/fundledger-api.json` generated on build → typed client `web/src/lib/api/schema.d.ts`. CI fails if either is stale. |
+| P0-10 | 🟡 Partly done | Neon staging is ready, and deploy pipeline/scripts are written (`deploy.yml`, `infra/vps`). **Waiting on:** domain, VPS SSH access, Cloudflare account, GitHub environment secrets. |
+| P0-11 | 🟡 Partly done | Sentry SDK is wired in (enabled when a DSN is set). **Waiting on:** Sentry and Better Stack accounts, billing alerts. |
+| P0-12 | ✅ Done | ADR-0001 to ADR-0008 accepted |
+
+**Verified on 07-Oct-2026:**
+- 38 API tests passed: 23 unit and 15 integration, including 6 database tests run against Neon through the pooler.
+- 14 web tests passed.
+- Release build with zero warnings; no vulnerable packages; EF model in sync.
+- `schema.sql` and the migrations produce an identical schema (catalog comparison on Neon).
+- The API ran locally against Neon staging: `/health/ready` returned 200.
+
+**Not yet run anywhere:** the Docker image build and the GitHub Actions workflows. Docker Desktop would not start on the dev machine. Both run on the first PR.
+
+**Deferred to the phase that needs them:**
+- Lighthouse CI (Phase 2, when real screens exist)
+- Sentry source-map upload (when the Sentry account exists)
+- axe accessibility tests (Phase 2)
+
 ---
 
 ## 3. Phase 1 — Foundation / Identity (W2–W3)

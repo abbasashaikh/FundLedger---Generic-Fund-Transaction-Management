@@ -1,0 +1,39 @@
+{
+	email {$ACME_EMAIL}
+	servers {
+		# Only trust X-Forwarded-* from nothing upstream: Caddy is the edge.
+		trusted_proxies static private_ranges
+	}
+}
+
+(api_common) {
+	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+	# Abuse backstop in front of the API's own per-client limiter (TR-073).
+	request_body {
+		max_size 12MB
+	}
+	log {
+		output stdout
+		format json
+	}
+}
+
+{$API_DOMAIN_STAGING} {
+	import api_common
+	reverse_proxy fundledger-staging-api:8080 {
+		health_uri /health/live
+		health_interval 15s
+	}
+}
+
+{$API_DOMAIN_PRODUCTION} {
+	import api_common
+	reverse_proxy fundledger-production-api:8080 {
+		health_uri /health/live
+		health_interval 15s
+	}
+}

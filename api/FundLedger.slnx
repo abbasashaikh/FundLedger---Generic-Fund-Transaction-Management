@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FundLedger.Api/FundLedger.Api.csproj" />
+    <Project Path="src/FundLedger.Application/FundLedger.Application.csproj" />
+    <Project Path="src/FundLedger.Domain/FundLedger.Domain.csproj" />
+    <Project Path="src/FundLedger.Infrastructure/FundLedger.Infrastructure.csproj" />
+    <Project Path="src/FundLedger.Worker/FundLedger.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FundLedger.Api.IntegrationTests/FundLedger.Api.IntegrationTests.csproj" />
+    <Project Path="tests/FundLedger.Domain.Tests/FundLedger.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

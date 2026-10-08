@@ -18,6 +18,22 @@ public static class AuditActions
     public const string FundAccessChanged = "FUND_ACCESS_CHANGED";
 
     public const string OrganizationCreated = "ORGANIZATION_CREATED";
+
+    public const string FundCreated = "FUND_CREATED";
+    public const string FundUpdated = "FUND_UPDATED";
+    public const string FundActivated = "FUND_ACTIVATED";
+    public const string FundClosed = "FUND_CLOSED";
+    public const string FundReopened = "FUND_REOPENED";
+    public const string FundArchived = "FUND_ARCHIVED";
+    public const string OpeningBalanceChanged = "OPENING_BALANCE_CHANGED";
+
+    public const string AccountCreated = "ACCOUNT_CREATED";
+    public const string AccountUpdated = "ACCOUNT_UPDATED";
+    public const string CategoryCreated = "CATEGORY_CREATED";
+    public const string CategoryUpdated = "CATEGORY_UPDATED";
+    public const string LookupChanged = "LOOKUP_CHANGED";
+
+    public const string TxnCreated = "TXN_CREATED";
 }
 
 public static class AuditEntities
@@ -25,4 +41,9 @@ public static class AuditEntities
     public const string User = "User";
     public const string Session = "Session";
     public const string Organization = "Organization";
+    public const string Fund = "Fund";
+    public const string Account = "Account";
+    public const string Category = "Category";
+    public const string Lookup = "Lookup";
+    public const string Transaction = "Transaction";
 }

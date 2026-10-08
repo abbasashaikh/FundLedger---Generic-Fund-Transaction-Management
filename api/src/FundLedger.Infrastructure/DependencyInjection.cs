@@ -1,6 +1,9 @@
 using FundLedger.Application.Abstractions;
 using FundLedger.Application.Settings;
+using FundLedger.Domain.Accounts;
 using FundLedger.Domain.Funds;
+using FundLedger.Domain.Ledger;
+using FundLedger.Domain.Lookups;
 using FundLedger.Domain.Users;
 using FundLedger.Infrastructure.Persistence;
 using FundLedger.Infrastructure.Security;
@@ -45,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuthStore, AuthStore>();
         services.AddScoped<ISettingsProvider, SettingsProvider>();
+        services.AddScoped<IBalanceReader, BalanceReader>();
         services.AddSingleton<IPinHasher, PinHasher>();
 
         services.AddSingleton(sp =>
@@ -84,5 +88,10 @@ public static class DependencyInjection
         npgsql.MapEnum<UserStatus>("user_status", FundLedgerDbContext.Schema, labels);
         npgsql.MapEnum<AuthMethod>("auth_method", FundLedgerDbContext.Schema, labels);
         npgsql.MapEnum<FundStatus>("fund_status", FundLedgerDbContext.Schema, labels);
+        npgsql.MapEnum<AccountKind>("account_kind", FundLedgerDbContext.Schema, labels);
+        npgsql.MapEnum<CategoryDirection>("category_direction", FundLedgerDbContext.Schema, labels);
+        npgsql.MapEnum<TxnType>("txn_type", FundLedgerDbContext.Schema, labels);
+        npgsql.MapEnum<TxnStatus>("txn_status", FundLedgerDbContext.Schema, labels);
+        npgsql.MapEnum<AdjustmentDirection>("adj_direction", FundLedgerDbContext.Schema, labels);
     }
 }

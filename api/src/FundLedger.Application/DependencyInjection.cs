@@ -3,6 +3,8 @@ using FundLedger.Application.Abstractions;
 using FundLedger.Application.Auth;
 using FundLedger.Application.Bootstrap;
 using FundLedger.Application.Funds;
+using FundLedger.Application.Ledger;
+using FundLedger.Application.Lookups;
 using FundLedger.Application.Profile;
 using FundLedger.Application.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,9 @@ public static class DependencyInjection
         services.AddScoped<AuthService>();
         services.AddScoped<UserAdminService>();
         services.AddScoped<FundAccessGuard>();
+        services.AddScoped<FundService>();
+        services.AddScoped<LookupService>();
+        services.AddScoped<LedgerService>();
         services.AddScoped<MeService>();
         services.AddScoped<BootstrapService>();
         services.AddValidatorsFromAssemblyContaining<CreateUserRequestValidator>(ServiceLifetime.Singleton);

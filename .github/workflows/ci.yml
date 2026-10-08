@@ -127,8 +127,11 @@ jobs:
         run: docker build --build-arg GIT_SHA="$GITHUB_SHA" -t fundledger-api:ci api
       - name: API container answers /health/live as non-root
         run: |
+          # Throwaway signing key made by the image's own command (the API refuses to start without one).
+          KEY="$(docker run --rm fundledger-api:ci generate-jwt-key | sed -n '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/p')"
           docker run -d --name api -p 8080:8080 \
-            -e ConnectionStrings__FundLedger="Host=127.0.0.1;Port=1;Database=x;Username=x;Password=x" \
+            -e ConnectionStrings__FundLedger="Host=127.0.0.1;Database=x" \
+            -e "Auth__Jwt__SigningKeyPem=$KEY" \
             fundledger-api:ci
           ok=""
           for i in $(seq 1 30); do

@@ -22,6 +22,9 @@ try
     builder.AddFundLedgerApi();
 
     var app = builder.Build();
+
+    // Fail fast: a missing/invalid signing key must stop startup, not break every request.
+    _ = app.Services.GetRequiredService<FundLedger.Infrastructure.Security.JwtKeyRing>();
     app.UseFundLedgerPipeline();
     app.MapFundLedgerEndpoints();
 

@@ -6,6 +6,7 @@ import { useMe, useSelectedFund } from '../lib/auth/queries'
 import { formatRupees } from '../lib/format/money'
 import { Badge, ErrorBanner } from '../components/ui'
 import { TxnRow } from '../components/TxnRow'
+import { DashboardCharts } from '../components/DashboardCharts'
 import { Section } from '../components/ui/money'
 
 /** S04 — balance, today, quick actions, account balances, recent entries (App Flow §4.1). */
@@ -39,7 +40,7 @@ export function DashboardPage() {
 
   const d = dash.data
   return (
-    <div className="mx-auto grid max-w-3xl gap-4">
+    <div className="mx-auto grid max-w-4xl gap-4">
       <h1 className="sr-only">{t('screens.dashboard')}</h1>
       {fund.status === 'CLOSED' && <p role="status" className="rounded-md border border-border bg-surface-muted px-3 py-2 text-sm">{t('txn.closedFund', { fund: fund.name })}</p>}
       <ErrorBanner message={dash.error?.message} />
@@ -86,6 +87,8 @@ export function DashboardPage() {
           </ul>
         </Section>
       )}
+
+      {fund.permissions.viewReports && <DashboardCharts fundId={fund.id} />}
 
       {d && (
         <section aria-labelledby="recent-h" className="grid gap-2">

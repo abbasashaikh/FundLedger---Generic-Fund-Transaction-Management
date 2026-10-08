@@ -11,6 +11,7 @@ import { OfflineBanner } from '../../pwa/OfflineBanner'
 import { FundSwitcher } from './FundSwitcher'
 import { Toaster } from '../../components/toast'
 import { useSession } from '../../lib/auth/session'
+import { useMe, useSelectedFund } from '../../lib/auth/queries'
 
 // Layout per docs/02-App-Flow.md §2: bottom nav + centre (＋) on mobile,
 // left sidebar on desktop (≥1024px). Fund switcher and sync indicator are
@@ -20,11 +21,14 @@ export function AppShell() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const user = useSession((s) => s.user)
   const isAdmin = user?.role === 'ADMIN'
+  const me = useMe()
+  // Reports is hidden when the selected fund doesn't grant it (App Flow §2); shown while that is still loading.
+  const showReports = useSelectedFund(me.data)?.permissions.viewReports ?? true
 
   const main = [
     { to: '/', label: t('nav.home'), icon: Home, end: true },
     { to: '/ledger', label: t('nav.ledger'), icon: BookOpen },
-    { to: '/reports', label: t('nav.reports'), icon: BarChart3 },
+    ...(showReports ? [{ to: '/reports', label: t('nav.reports'), icon: BarChart3 }] : []),
   ]
   const admin = [
     { to: '/admin/users', label: t('nav.users'), icon: Users },
@@ -98,7 +102,7 @@ export function AppShell() {
               <Plus aria-hidden className="size-7" />
             </button>
           </div>
-          <TabLink {...main[2]!} />
+          {main[2] ? <TabLink {...main[2]} /> : <div />}
           <TabLink to="/more" label={t('nav.more')} icon={MoreHorizontal} />
         </nav>
       </div>

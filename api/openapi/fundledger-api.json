@@ -2841,6 +2841,464 @@
           }
         }
       }
+    },
+    "/api/v1/reports": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "The ten reports (TRD §10.1). Who may open them is decided per fund (can_view_reports).",
+        "operationId": "ListReports",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportCatalogItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/{code}": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Run one report for a fund and period. Members without 'see all' get their own entries only.",
+        "operationId": "RunReport",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fundId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "paymentModeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exports": {
+      "post": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Start an export (CSV, XLSX or PDF). Needs an Idempotency-Key header; a repeat returns the same job.",
+        "operationId": "CreateExport",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "The caller's own recent exports.",
+        "operationId": "ListExports",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExportJobDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exports/{id}": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Status of one of the caller's exports.",
+        "operationId": "GetExport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exports/{id}/file": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "The finished file (available for 24 hours).",
+        "operationId": "DownloadExport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions/{id}/receipt.pdf": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Money In receipt (PDF). Money In entries only; same access as the entry itself.",
+        "operationId": "GetReceipt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Organization profile and settings (Admin).",
+        "operationId": "GetSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Save the organization profile and settings. Changes are audited.",
+        "operationId": "SaveSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3124,6 +3582,34 @@
           },
           "user": {
             "$ref": "#/components/schemas/SessionProfile"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthSettings": {
+        "required": [
+          "pinMaxFailures",
+          "pinLockoutMinutes",
+          "sessionIdleMinutes",
+          "sessionAbsoluteDays"
+        ],
+        "type": "object",
+        "properties": {
+          "pinMaxFailures": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pinLockoutMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sessionIdleMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sessionAbsoluteDays": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -3461,6 +3947,81 @@
         },
         "additionalProperties": false
       },
+      "CreateExportRequest": {
+        "required": [
+          "reportCode",
+          "format",
+          "fundId",
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "reportCode": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TxnType"
+              }
+            ]
+          },
+          "categoryId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "userId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "paymentModeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateTransferRequest": {
         "required": [
           "fundId",
@@ -3623,6 +4184,79 @@
           },
           "ownOnly": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ExportJobDto": {
+        "required": [
+          "id",
+          "reportCode",
+          "format",
+          "status",
+          "rowCount",
+          "errorCode",
+          "createdAt",
+          "finishedAt",
+          "expiresAt",
+          "fileName",
+          "fundId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reportCode": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "rowCount": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "errorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "fileName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -4108,7 +4742,8 @@
           "shortCode",
           "currencyCode",
           "timezone",
-          "dateFormat"
+          "dateFormat",
+          "receiptsEnabled"
         ],
         "type": "object",
         "properties": {
@@ -4121,6 +4756,61 @@
           },
           "shortCode": {
             "type": "string"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "dateFormat": {
+            "type": "string"
+          },
+          "receiptsEnabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OrganizationProfile": {
+        "required": [
+          "name",
+          "contactMobile",
+          "contactEmail",
+          "address",
+          "registrationNumber",
+          "currencyCode",
+          "timezone",
+          "dateFormat"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "contactMobile": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "contactEmail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "address": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "registrationNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "currencyCode": {
             "type": "string"
@@ -4229,6 +4919,192 @@
           }
         },
         "additionalProperties": false
+      },
+      "ReceiptSettings": {
+        "required": [
+          "enabled",
+          "footerText",
+          "showRecordedBy"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "footerText": {
+            "type": "string"
+          },
+          "showRecordedBy": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportCatalogItem": {
+        "required": [
+          "code",
+          "title",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportColumn": {
+        "required": [
+          "key",
+          "label",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReportValueKind"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportFigure": {
+        "required": [
+          "key",
+          "label",
+          "value",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReportValueKind"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportResult": {
+        "required": [
+          "code",
+          "title",
+          "description",
+          "fundId",
+          "fundName",
+          "from",
+          "to",
+          "ownOnly",
+          "generatedAt",
+          "generatedBy",
+          "organizationName",
+          "summary",
+          "columns",
+          "rows",
+          "totals",
+          "truncated"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fundName": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "ownOnly": {
+            "type": "boolean"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "generatedBy": {
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportFigure"
+            }
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportColumn"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "totals": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportValueKind": {
+        "enum": [
+          "TEXT",
+          "DATE",
+          "MONEY",
+          "NUMBER"
+        ]
       },
       "RevokeSessionsRequest": {
         "required": [
@@ -4415,6 +5291,30 @@
               "null",
               "string"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SettingsDto": {
+        "required": [
+          "organization",
+          "transactions",
+          "auth",
+          "receipts"
+        ],
+        "type": "object",
+        "properties": {
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationProfile"
+          },
+          "transactions": {
+            "$ref": "#/components/schemas/TransactionSettings"
+          },
+          "auth": {
+            "$ref": "#/components/schemas/AuthSettings"
+          },
+          "receipts": {
+            "$ref": "#/components/schemas/ReceiptSettings"
           }
         },
         "additionalProperties": false
@@ -4723,6 +5623,28 @@
           },
           "duplicate": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransactionSettings": {
+        "required": [
+          "editWindowMinutes",
+          "backdateDaysMember",
+          "maxAmount"
+        ],
+        "type": "object",
+        "properties": {
+          "editWindowMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "backdateDaysMember": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxAmount": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -5217,6 +6139,12 @@
     },
     {
       "name": "Audit"
+    },
+    {
+      "name": "Reports"
+    },
+    {
+      "name": "Settings"
     }
   ]
 }

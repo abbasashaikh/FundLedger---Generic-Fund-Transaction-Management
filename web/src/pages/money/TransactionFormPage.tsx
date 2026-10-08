@@ -12,6 +12,7 @@ import { formatDate, formatTime, nowTime, todayIso } from '../../lib/format/date
 import { Button, Dialog, ErrorBanner, Field } from '../../components/ui'
 import { AmountInput, ChipGroup, TxnTypeBadge } from '../../components/ui/money'
 import { toast } from '../../lib/toast'
+import { ReceiptButton } from '../../components/ReceiptButton'
 
 export type EntryKind = 'in' | 'out' | 'transfer'
 
@@ -74,6 +75,7 @@ export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: s
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const x = edit?.transaction
+  const me = useMe()
 
   const keep = [x?.category?.id, x?.account?.id, x?.fromAccount?.id, x?.toAccount?.id, x?.paymentMode?.id]
   const accountsQ = useAccounts(!!edit)
@@ -226,6 +228,7 @@ export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: s
         <p className="text-sm">{t('txn.fundBalance', { balance: formatRupees(saved.fundClosingBalance) })}</p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button onClick={addAnother}>{t('txn.addAnother')}</Button>
+          {tx.type === 'DEPOSIT' && me.data?.organization.receiptsEnabled && <ReceiptButton id={tx.id} variant="secondary" />}
           <Button variant="secondary" onClick={() => void navigate(`/txn/${tx.id}`)}>{t('txn.view')}</Button>
           <Button variant="ghost" onClick={() => void navigate('/')}>{t('txn.done')}</Button>
         </div>

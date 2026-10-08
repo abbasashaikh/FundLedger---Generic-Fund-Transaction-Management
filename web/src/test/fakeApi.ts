@@ -25,7 +25,7 @@ export const memberUser = { id: 'u-member', organizationId: 'o1', fullName: 'Imr
 export function meFor(user: { id: string; fullName: string; role: 'ADMIN' | 'MEMBER' }) {
   return {
     id: user.id, fullName: user.fullName, mobile: '+919876543210', role: user.role, pinMustChange: false,
-    organization: { id: 'o1', name: 'Al Madad', shortCode: 'ALM', currencyCode: 'INR', timezone: 'Asia/Kolkata', dateFormat: 'dd-MMM-yyyy' },
+    organization: { id: 'o1', name: 'Al Madad', shortCode: 'ALM', currencyCode: 'INR', timezone: 'Asia/Kolkata', dateFormat: 'dd-MMM-yyyy', receiptsEnabled: true },
     funds: [{ id: 'f1', code: 'IJT26', name: 'Ijtema 2026', status: 'ACTIVE',
       permissions: { moneyIn: true, moneyOut: true, transfer: false, viewReports: true, export: false, viewAllTransactions: true, adjust: false } }],
   }

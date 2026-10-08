@@ -49,6 +49,12 @@ public sealed class PreconditionRequiredException()
     public override int Status => 428;
 }
 
+/// <summary>429 — the caller is doing something too often (for example generating many receipts).</summary>
+public sealed class RateLimitedException(string message = "Too many requests. Please try again shortly.") : AppException("RATE_LIMITED", message)
+{
+    public override int Status => 429;
+}
+
 public sealed class TooManyAttemptsException(TimeSpan retryAfter)
     : AppException("ACCOUNT_LOCKED", "Too many attempts. Please try again later.")
 {

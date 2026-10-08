@@ -688,6 +688,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The ten reports (TRD §10.1). Who may open them is decided per fund (can_view_reports). */
+        get: operations["ListReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run one report for a fund and period. Members without 'see all' get their own entries only. */
+        get: operations["RunReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's own recent exports. */
+        get: operations["ListExports"];
+        put?: never;
+        /** Start an export (CSV, XLSX or PDF). Needs an Idempotency-Key header; a repeat returns the same job. */
+        post: operations["CreateExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status of one of the caller's exports. */
+        get: operations["GetExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports/{id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The finished file (available for 24 hours). */
+        get: operations["DownloadExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/{id}/receipt.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Money In receipt (PDF). Money In entries only; same access as the entry itself. */
+        get: operations["GetReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Organization profile and settings (Admin). */
+        get: operations["GetSettings"];
+        /** Save the organization profile and settings. Changes are audited. */
+        put: operations["SaveSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -755,6 +876,16 @@ export interface components {
             /** Format: int32 */
             expiresIn: number;
             user: components["schemas"]["SessionProfile"];
+        };
+        AuthSettings: {
+            /** Format: int32 */
+            pinMaxFailures: number;
+            /** Format: int32 */
+            pinLockoutMinutes: number;
+            /** Format: int32 */
+            sessionIdleMinutes: number;
+            /** Format: int32 */
+            sessionAbsoluteDays: number;
         };
         CancelTransactionRequest: {
             reason: string;
@@ -848,6 +979,25 @@ export interface components {
             /** Format: uuid */
             clientTxnId: null | string;
         };
+        CreateExportRequest: {
+            reportCode: string;
+            format: string;
+            /** Format: uuid */
+            fundId: string;
+            /** Format: date */
+            from: null | string;
+            /** Format: date */
+            to: null | string;
+            type?: null | components["schemas"]["TxnType"];
+            /** Format: uuid */
+            categoryId?: null | string;
+            /** Format: uuid */
+            accountId?: null | string;
+            /** Format: uuid */
+            userId?: null | string;
+            /** Format: uuid */
+            paymentModeId?: null | string;
+        };
         CreateTransferRequest: {
             /** Format: uuid */
             fundId: string;
@@ -887,6 +1037,25 @@ export interface components {
             accounts: components["schemas"]["AccountBalanceDto"][];
             recent: components["schemas"]["TransactionDto"][];
             ownOnly: boolean;
+        };
+        ExportJobDto: {
+            /** Format: uuid */
+            id: string;
+            reportCode: string;
+            format: string;
+            status: string;
+            /** Format: int32 */
+            rowCount: null | number;
+            errorCode: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt: null | string;
+            /** Format: date-time */
+            expiresAt: null | string;
+            fileName: null | string;
+            /** Format: uuid */
+            fundId: string;
         };
         FieldChange: {
             field: string;
@@ -1024,6 +1193,17 @@ export interface components {
             currencyCode: string;
             timezone: string;
             dateFormat: string;
+            receiptsEnabled: boolean;
+        };
+        OrganizationProfile: {
+            name: string;
+            contactMobile: null | string;
+            contactEmail: null | string;
+            address: null | string;
+            registrationNumber: null | string;
+            currencyCode: string;
+            timezone: string;
+            dateFormat: string;
         };
         PaymentModeDto: {
             /** Format: uuid */
@@ -1050,6 +1230,55 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        ReceiptSettings: {
+            enabled: boolean;
+            footerText: string;
+            showRecordedBy: boolean;
+        };
+        ReportCatalogItem: {
+            code: string;
+            title: string;
+            description: string;
+        };
+        ReportColumn: {
+            key: string;
+            label: string;
+            kind: components["schemas"]["ReportValueKind"];
+        };
+        ReportFigure: {
+            key: string;
+            label: string;
+            value: string;
+            kind: components["schemas"]["ReportValueKind"];
+        };
+        ReportResult: {
+            code: string;
+            title: string;
+            description: string;
+            /** Format: uuid */
+            fundId: string;
+            fundName: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            ownOnly: boolean;
+            /** Format: date-time */
+            generatedAt: string;
+            generatedBy: string;
+            organizationName: string;
+            summary: components["schemas"]["ReportFigure"][];
+            columns: components["schemas"]["ReportColumn"][];
+            rows: {
+                [key: string]: string;
+            }[];
+            totals: null | {
+                [key: string]: string;
+            };
+            truncated: boolean;
+        };
+        /** @enum {unknown} */
+        ReportValueKind: "TEXT" | "DATE" | "MONEY" | "NUMBER";
         RevokeSessionsRequest: {
             /** Format: uuid */
             familyId: null | string;
@@ -1097,6 +1326,12 @@ export interface components {
         SetOpeningBalancesRequest: {
             items: components["schemas"]["OpeningBalanceItem"][];
             reason: null | string;
+        };
+        SettingsDto: {
+            organization: components["schemas"]["OrganizationProfile"];
+            transactions: components["schemas"]["TransactionSettings"];
+            auth: components["schemas"]["AuthSettings"];
+            receipts: components["schemas"]["ReceiptSettings"];
         };
         SetUserStatusRequest: {
             status: components["schemas"]["UserStatus"];
@@ -1157,6 +1392,13 @@ export interface components {
             transaction: components["schemas"]["TransactionDto"];
             fundClosingBalance: string;
             duplicate: boolean;
+        };
+        TransactionSettings: {
+            /** Format: int32 */
+            editWindowMinutes: number;
+            /** Format: int32 */
+            backdateDaysMember: number;
+            maxAmount: string;
         };
         /** @enum {unknown} */
         TxnStatus: "ACTIVE" | "CANCELLED";
@@ -3349,6 +3591,330 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportCatalogItem"][];
+                };
+            };
+        };
+    };
+    RunReport: {
+        parameters: {
+            query: {
+                fundId: string;
+                from?: string;
+                to?: string;
+                type?: string;
+                categoryId?: string;
+                accountId?: string;
+                userId?: string;
+                paymentModeId?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJobDto"][];
+                };
+            };
+        };
+    };
+    CreateExport: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJobDto"];
+                };
+            };
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJobDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJobDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DownloadExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsDto"];
+                };
+            };
+        };
+    };
+    SaveSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Forbidden */
             403: {
                 headers: {

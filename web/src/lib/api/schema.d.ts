@@ -640,8 +640,8 @@ export interface operations {
     ListUsers: {
         parameters: {
             query?: {
-                status?: components["schemas"]["UserStatus"];
-                role?: components["schemas"]["UserRole"];
+                status?: string;
+                role?: string;
                 q?: string;
             };
             header?: never;

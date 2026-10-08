@@ -29,8 +29,8 @@ internal static class UserEndpoints
             .RequireAuthorization(Policies.Admin)
             .AddEndpointFilter<TenantTransactionFilter>();
 
-        users.MapGet("/", async Task<Ok<UserList>> (UserStatus? status, UserRole? role, string? q, UserAdminService service, HttpContext http) =>
-                TypedResults.Ok(await service.ListAsync(status, role, q, http.RequestAborted).ConfigureAwait(false)))
+        users.MapGet("/", async Task<Ok<UserList>> (EnumQuery<UserStatus>? status, EnumQuery<UserRole>? role, string? q, UserAdminService service, HttpContext http) =>
+                TypedResults.Ok(await service.ListAsync(status.Unwrap(), role.Unwrap(), q, http.RequestAborted).ConfigureAwait(false)))
             .WithName("ListUsers");
 
         users.MapGet("/{id:guid}", async Task<Ok<UserDetail>> (Guid id, UserAdminService service, HttpContext http) =>

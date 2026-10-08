@@ -32,7 +32,10 @@ jobs:
       - name: Build (warnings are errors)
         run: dotnet build -c Release
       - name: OpenAPI document is committed and current
-        run: git diff --exit-code -- openapi/
+        run: |
+          git diff --exit-code -- openapi/
+          # Guard: a generator that silently fails writes an EMPTY document, which would also "match".
+          test "$(jq '.paths | length' openapi/fundledger-api.json)" -ge 10
       - name: Test (unit + integration against PostgreSQL 17 via Testcontainers)
         run: dotnet test -c Release --no-build
       - name: EF model has no unmigrated changes

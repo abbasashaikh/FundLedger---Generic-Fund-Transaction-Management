@@ -71,6 +71,7 @@ internal static class ApiSetup
         services.AddHttpContextAccessor();
         services.AddScoped<IRequestContext, HttpRequestContext>();
         services.AddFundLedgerAuth();
+        services.AddHostedService<StartupChecks>();
 
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);

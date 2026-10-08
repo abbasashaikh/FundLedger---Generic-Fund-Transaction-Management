@@ -40,6 +40,21 @@ public sealed class UserAdminTests(PostgresFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task User_list_filters_accept_the_wire_form_of_enums_in_any_case()
+    {
+        SkipIfNoDb();
+        var org = await _host.CreateOrgAsync();
+        var admin = await org.AdminAsync();
+        var member = await org.CreateMemberAsync(admin, "Filter Me");
+        (await admin.PatchAsync($"/api/v1/users/{member.Id}/status", new { status = "INACTIVE" })).EnsureSuccessStatusCode();
+
+        Assert.Equal(1, (await admin.GetJsonAsync("/api/v1/users?status=ACTIVE")).GetProperty("items").GetArrayLength());
+        Assert.Equal(1, (await admin.GetJsonAsync("/api/v1/users?status=inactive")).GetProperty("items").GetArrayLength());
+        Assert.Equal(1, (await admin.GetJsonAsync("/api/v1/users?role=MEMBER")).GetProperty("items").GetArrayLength());
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync("/api/v1/users?status=NOPE")).StatusCode);
+    }
+
+    [Fact]
     public async Task Validation_errors_are_reported_per_field()
     {
         SkipIfNoDb();

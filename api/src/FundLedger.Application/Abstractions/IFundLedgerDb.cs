@@ -5,6 +5,7 @@ using FundLedger.Domain.Lookups;
 using FundLedger.Domain.Organizations;
 using FundLedger.Domain.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace FundLedger.Application.Abstractions;
@@ -34,7 +35,11 @@ public interface IFundLedgerDb
 
     DbSet<Transaction> Transactions { get; }
 
+    DbSet<TransactionRevision> TransactionRevisions { get; }
+
     DatabaseFacade Database { get; }
+
+    ChangeTracker ChangeTracker { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

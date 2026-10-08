@@ -1,4 +1,5 @@
 using FundLedger.Application.Abstractions;
+using FundLedger.Application.Audit;
 using FundLedger.Application.Settings;
 using FundLedger.Domain.Accounts;
 using FundLedger.Domain.Funds;
@@ -49,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthStore, AuthStore>();
         services.AddScoped<ISettingsProvider, SettingsProvider>();
         services.AddScoped<IBalanceReader, BalanceReader>();
+        services.AddScoped<IAuditReader, AuditReader>();
         services.AddSingleton<IPinHasher, PinHasher>();
 
         services.AddSingleton(sp =>

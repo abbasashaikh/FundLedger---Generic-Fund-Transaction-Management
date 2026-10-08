@@ -304,7 +304,7 @@ The database repeats the critical rules as CHECK constraints and triggers (see [
 - A change reason is mandatory when the editor is an Admin, or when the edit is outside the edit window.
 - Every edit writes a new full snapshot to `transaction_revisions` and an audit event with old and new values (BR-014).
 
-**TR-031 — Optimistic concurrency.** Edit and cancel requests must send `If-Match: "<revision>"`. If the revision is stale, the API returns `412 Precondition Failed`.
+**TR-031 — Optimistic concurrency.** Edit and cancel requests must send `If-Match: "<revision>"`. If the revision is stale, the API returns `412 Precondition Failed` (`REVISION_CONFLICT`); without the header it returns `428 Precondition Required` (`PRECONDITION_REQUIRED`). Detail responses carry the revision as `ETag`.
 
 **TR-032 — Cancel**
 - Cancelling sets `status = CANCELLED` and records the reason, the user and the time.
@@ -547,7 +547,7 @@ ETag: "1"
 
 ### 11.4 Error codes (stable contract)
 
-`VALIDATION_FAILED`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `RATE_LIMITED`, `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `PIN_CHANGE_REQUIRED`, `PIN_TOO_WEAK`, `USER_INACTIVE`, `ACTIVE_USER_LIMIT_REACHED`, `FUND_NOT_ACTIVE`, `CATEGORY_INACTIVE`, `CATEGORY_DIRECTION_MISMATCH`, `ACCOUNT_INACTIVE`, `TRANSFER_SAME_ACCOUNT`, `AMOUNT_OUT_OF_RANGE`, `DATE_IN_FUTURE`, `BACKDATE_LIMIT_EXCEEDED`, `EDIT_WINDOW_EXPIRED`, `REASON_REQUIRED`, `REVISION_CONFLICT`, `TXN_CANCELLED_IMMUTABLE`, `ATTACHMENT_TYPE_NOT_ALLOWED`, `ATTACHMENT_TOO_LARGE`, `EXPORT_NOT_READY`, `RECEIPT_NOT_AVAILABLE`.
+`VALIDATION_FAILED`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `RATE_LIMITED`, `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `PIN_CHANGE_REQUIRED`, `PIN_TOO_WEAK`, `USER_INACTIVE`, `ACTIVE_USER_LIMIT_REACHED`, `FUND_NOT_ACTIVE`, `CATEGORY_INACTIVE`, `CATEGORY_DIRECTION_MISMATCH`, `ACCOUNT_INACTIVE`, `TRANSFER_SAME_ACCOUNT`, `AMOUNT_OUT_OF_RANGE`, `DATE_IN_FUTURE`, `BACKDATE_LIMIT_EXCEEDED`, `EDIT_WINDOW_EXPIRED`, `REASON_REQUIRED`, `REVISION_CONFLICT`, `PRECONDITION_REQUIRED`, `TXN_CANCELLED_IMMUTABLE`, `ATTACHMENT_TYPE_NOT_ALLOWED`, `ATTACHMENT_TOO_LARGE`, `EXPORT_NOT_READY`, `RECEIPT_NOT_AVAILABLE`.
 
 ---
 

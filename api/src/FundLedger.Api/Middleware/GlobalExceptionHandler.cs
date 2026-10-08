@@ -35,6 +35,7 @@ internal sealed partial class GlobalExceptionHandler(
         var (status, code, title) = exception switch
         {
             AppException a => (a.Status, a.Code, a.Message),
+            DbUpdateConcurrencyException => (412, "REVISION_CONFLICT", "This record was changed by someone else. Reload to see the latest version."),
             DomainException d => (400, d.Code, d.Message),
             PostgresException { SqlState: "P0001" } pg when DatabaseRules.TryGetValue(pg.MessageText, out var rule)
                 => (rule.Status, pg.MessageText, rule.Title),

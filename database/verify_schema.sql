@@ -139,6 +139,11 @@ BEGIN
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: BR-013 cancellation requires reason';
   END;
 
+  -- Cancellation is a revision of its own (history needs a row for it)
+  SELECT revision INTO n FROM transactions WHERE id = '01900000-0000-7000-8000-000000001005';
+  IF n <> 2 THEN RAISE EXCEPTION 'cancelled txn revision expected 2, got %', n; END IF;
+  RAISE NOTICE 'ok: cancellation bumps the revision';
+
   -- Cancelled is terminal
   BEGIN
     UPDATE transactions SET remarks = 'edit after cancel' WHERE id = '01900000-0000-7000-8000-000000001005';

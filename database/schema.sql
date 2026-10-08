@@ -462,10 +462,9 @@ BEGIN
   IF v_fund_status IS DISTINCT FROM 'ACTIVE' THEN
     RAISE EXCEPTION 'FUND_NOT_ACTIVE' USING ERRCODE = 'P0001';
   END IF;
-  IF NEW.status = 'ACTIVE' THEN
-    NEW.revision := OLD.revision + 1;
-    NEW.updated_at := now();
-  END IF;
+  -- Every change (edit OR cancellation) is a new revision, so each has its own history entry.
+  NEW.revision := OLD.revision + 1;
+  NEW.updated_at := now();
   RETURN NEW;
 END
 $$;

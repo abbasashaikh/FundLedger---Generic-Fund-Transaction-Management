@@ -22,13 +22,13 @@ namespace FundLedger.Application.Ledger;
 /// rules (shape CHECKs, closed-fund trigger, unique client id), so a bug here can't store
 /// an invalid row. Edit and cancel arrive in Phase 3.
 /// </summary>
-public sealed class LedgerService(
+public sealed partial class LedgerService(
     IFundLedgerDb db, ICurrentUser caller, FundAccessGuard guard, ISettingsProvider settings, IAuditWriter audit,
     IBalanceReader balances, TimeProvider clock)
 {
     private const int DefaultPageSize = 50;
     private const int MaxPageSize = 200;
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
 
     // ---- create ---------------------------------------------------------------------
     public async Task<TransactionResult> CreateDepositAsync(CreateDepositRequest r, CancellationToken ct)
@@ -175,7 +175,7 @@ public sealed class LedgerService(
     }
 
     // ---- read -----------------------------------------------------------------------
-    public async Task<TransactionDto> GetAsync(Guid id, CancellationToken ct)
+    public async Task<TransactionDetail> GetAsync(Guid id, CancellationToken ct)
     {
         var head = await db.Transactions.AsNoTracking().Where(t => t.Id == id)
             .Select(t => new { t.FundId, t.CreatedBy }).SingleOrDefaultAsync(ct).ConfigureAwait(false) ?? throw new NotFoundException();
@@ -187,7 +187,8 @@ public sealed class LedgerService(
             throw new NotFoundException();
         }
 
-        return await GetDtoAsync(id, ct).ConfigureAwait(false);
+        var dto = await GetDtoAsync(id, ct).ConfigureAwait(false);
+        return await DetailForAsync(dto, ct).ConfigureAwait(false);
     }
 
     public async Task<TransactionPage> ListAsync(TransactionQuery q, CancellationToken ct)
@@ -261,7 +262,15 @@ public sealed class LedgerService(
         from ta in tag.DefaultIfEmpty()
         join pm in db.PaymentModes.AsNoTracking() on t.PaymentModeId equals pm.Id into pmg
         from pm in pmg.DefaultIfEmpty()
-        select new Row { t = t, UserName = u.FullName, CategoryName = c.Name, AccountName = a.Name, FromName = fa.Name, ToName = ta.Name, ModeName = pm.Name };
+        join uu in db.Users.AsNoTracking() on t.UpdatedBy equals uu.Id into uug
+        from uu in uug.DefaultIfEmpty()
+        join cu in db.Users.AsNoTracking() on t.CancelledBy equals cu.Id into cug
+        from cu in cug.DefaultIfEmpty()
+        select new Row
+        {
+            t = t, UserName = u.FullName, CategoryName = c.Name, AccountName = a.Name, FromName = fa.Name, ToName = ta.Name, ModeName = pm.Name,
+            UpdatedByName = uu.FullName, CancelledByName = cu.FullName,
+        };
 
     private IQueryable<Row> Filter(TransactionQuery q, bool ownOnly)
     {
@@ -342,7 +351,9 @@ public sealed class LedgerService(
             t.TxnTime.ToString("HH:mm", CultureInfo.InvariantCulture),
             Ref(t.CategoryId, x.CategoryName), Ref(t.AccountId, x.AccountName), Ref(t.FromAccountId, x.FromName), Ref(t.ToAccountId, x.ToName),
             Ref(t.PaymentModeId, x.ModeName), t.AdjustmentDirection, t.ReceivedFrom, t.PaidTo, t.Purpose, t.ReferenceNumber, t.Remarks,
-            new PersonRef(t.CreatedBy, x.UserName), t.CreatedAt, t.Revision, t.Source);
+            new PersonRef(t.CreatedBy, x.UserName), t.CreatedAt, t.Revision, t.Source,
+            t.UpdatedBy is { } ub && x.UpdatedByName is not null ? new PersonRef(ub, x.UpdatedByName) : null, t.UpdatedAt,
+            t.CancelledBy is { } cb && x.CancelledByName is not null ? new PersonRef(cb, x.CancelledByName) : null, t.CancelledAt, t.CancellationReason);
     }
 
     private static NamedRef? Ref(Guid? id, string? name) => id is { } i && name is not null ? new NamedRef(i, name) : null;
@@ -380,7 +391,7 @@ public sealed class LedgerService(
             """, ct).ConfigureAwait(false);
     }
 
-    private async Task RequireCategoryAsync(Guid id, CategoryDirection direction, Guid fundId, CancellationToken ct)
+    private async Task RequireCategoryAsync(Guid id, CategoryDirection direction, Guid fundId, CancellationToken ct, Guid? existing = null)
     {
         var c = await db.Categories.AsNoTracking().Where(x => x.Id == id)
             .Select(x => new { x.IsActive, x.Direction, x.FundId }).SingleOrDefaultAsync(ct).ConfigureAwait(false);
@@ -394,13 +405,13 @@ public sealed class LedgerService(
             throw new DomainException("CATEGORY_DIRECTION_MISMATCH", "This category can't be used for this type of entry.");
         }
 
-        if (!c.IsActive)
+        if (!c.IsActive && id != existing)   // an edit may keep a category an Admin has since turned off
         {
             throw new DomainException("CATEGORY_INACTIVE", "This category was turned off by an Admin. Choose another.");
         }
     }
 
-    private async Task RequireAccountAsync(Guid id, string field, CancellationToken ct)
+    private async Task RequireAccountAsync(Guid id, string field, CancellationToken ct, Guid? existing = null)
     {
         var a = await db.Accounts.AsNoTracking().Where(x => x.Id == id).Select(x => new { x.IsActive }).SingleOrDefaultAsync(ct).ConfigureAwait(false);
         if (a is null)
@@ -408,13 +419,13 @@ public sealed class LedgerService(
             throw ValidationFailedException.For(field, "Choose an account.");
         }
 
-        if (!a.IsActive)
+        if (!a.IsActive && id != existing)
         {
             throw new DomainException("ACCOUNT_INACTIVE", "This account was turned off by an Admin. Choose another.");
         }
     }
 
-    private async Task RequirePaymentModeAsync(Guid id, string? reference, CancellationToken ct)
+    private async Task RequirePaymentModeAsync(Guid id, string? reference, CancellationToken ct, Guid? existing = null)
     {
         var m = await db.PaymentModes.AsNoTracking().Where(x => x.Id == id)
             .Select(x => new { x.IsActive, x.RequiresReference, x.Name }).SingleOrDefaultAsync(ct).ConfigureAwait(false);
@@ -423,7 +434,7 @@ public sealed class LedgerService(
             throw ValidationFailedException.For("paymentModeId", "Choose a payment mode.");
         }
 
-        if (!m.IsActive)
+        if (!m.IsActive && id != existing)
         {
             throw new DomainException("PAYMENT_MODE_INACTIVE", "This payment mode was turned off by an Admin. Choose another.");
         }
@@ -502,5 +513,9 @@ public sealed class LedgerService(
         public string? ToName { get; init; }
 
         public string? ModeName { get; init; }
+
+        public string? UpdatedByName { get; init; }
+
+        public string? CancelledByName { get; init; }
     }
 }

@@ -559,7 +559,43 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** One entry, with what the caller may do with it. ETag is the revision. */
         get: operations["GetTransaction"];
+        /** Edit an entry. Needs If-Match with the revision being edited; Admin edits need a reason. */
+        put: operations["UpdateTransaction"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel an entry (Admin). It stays in history and leaves the balances. */
+        post: operations["CancelTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who changed what, when and why (newest first). */
+        get: operations["GetTransactionHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -593,6 +629,57 @@ export interface paths {
         };
         /** Computed balance of every account within one fund. */
         get: operations["GetAccountBalances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/adjustment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a correction to an account balance (Admin only; reason required). */
+        post: operations["CreateAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search the audit log (newest first). */
+        get: operations["ListAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-logs/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** CSV of the filtered log (max 5,000 rows). The export is itself audited. */
+        get: operations["ExportAuditLogs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -641,11 +728,36 @@ export interface components {
         AccountKind: "CASH" | "BANK" | "UPI" | "WALLET" | "OTHER";
         /** @enum {unknown} */
         AdjustmentDirection: "INCREASE" | "DECREASE" | null;
+        AuditItem: {
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            createdAt: string;
+            user: null | components["schemas"]["PersonRef"];
+            action: string;
+            entityType: string;
+            entityId: null | string;
+            /** Format: uuid */
+            fundId: null | string;
+            fundName: null | string;
+            oldValue: null | components["schemas"]["JsonElement"];
+            newValue: null | components["schemas"]["JsonElement"];
+            reason: null | string;
+            requestId: null | string;
+            ipAddress: null | string;
+        };
+        AuditPage: {
+            items: components["schemas"]["AuditItem"][];
+            nextCursor: null | string;
+        };
         AuthResponse: {
             accessToken: string;
             /** Format: int32 */
             expiresIn: number;
             user: components["schemas"]["SessionProfile"];
+        };
+        CancelTransactionRequest: {
+            reason: string;
         };
         /** @enum {unknown} */
         CategoryDirection: "MONEY_IN" | "MONEY_OUT";
@@ -664,6 +776,21 @@ export interface components {
         ChangePinRequest: {
             currentPin: string;
             newPin: string;
+        };
+        CreateAdjustmentRequest: {
+            /** Format: uuid */
+            fundId: string;
+            amount: string;
+            /** Format: date */
+            txnDate: string;
+            txnTime: string;
+            /** Format: uuid */
+            accountId: string;
+            direction: components["schemas"]["AdjustmentDirection"];
+            reason: string;
+            remarks: null | string;
+            /** Format: uuid */
+            clientTxnId: null | string;
         };
         CreateCategoryRequest: {
             direction: components["schemas"]["CategoryDirection"];
@@ -761,6 +888,11 @@ export interface components {
             recent: components["schemas"]["TransactionDto"][];
             ownOnly: boolean;
         };
+        FieldChange: {
+            field: string;
+            old: null | string;
+            new: null | string;
+        };
         FundAccessGrant: {
             /** Format: uuid */
             fundId: string;
@@ -820,6 +952,18 @@ export interface components {
             /** Format: int16 */
             sortOrder: number;
         };
+        HistoryEntry: {
+            /** Format: int32 */
+            revision: number;
+            kind: components["schemas"]["HistoryKind"];
+            changedBy: components["schemas"]["PersonRef"];
+            /** Format: date-time */
+            changedAt: string;
+            reason: null | string;
+            changes: components["schemas"]["FieldChange"][];
+        };
+        /** @enum {unknown} */
+        HistoryKind: "CREATED" | "EDITED" | "CANCELLED";
         HttpValidationProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -831,6 +975,7 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        JsonElement: unknown;
         LedgerTotals: {
             moneyIn: string;
             moneyOut: string;
@@ -957,6 +1102,14 @@ export interface components {
             status: components["schemas"]["UserStatus"];
             reason: null | string;
         };
+        TransactionDetail: {
+            transaction: components["schemas"]["TransactionDto"];
+            canEdit: boolean;
+            canCancel: boolean;
+            /** Format: date-time */
+            editableUntil: null | string;
+            editRequiresReason: boolean;
+        };
         TransactionDto: {
             /** Format: uuid */
             id: string;
@@ -986,6 +1139,13 @@ export interface components {
             /** Format: int32 */
             revision: number;
             source: string;
+            updatedBy: null | components["schemas"]["PersonRef"];
+            /** Format: date-time */
+            updatedAt: null | string;
+            cancelledBy: null | components["schemas"]["PersonRef"];
+            /** Format: date-time */
+            cancelledAt: null | string;
+            cancellationReason: null | string;
         };
         TransactionPage: {
             items: components["schemas"]["TransactionDto"][];
@@ -1010,6 +1170,29 @@ export interface components {
             isActive: boolean;
             /** Format: int16 */
             sortOrder: number;
+        };
+        UpdateTransactionRequest: {
+            amount: string;
+            /** Format: date */
+            txnDate: string;
+            txnTime: string;
+            /** Format: uuid */
+            categoryId: null | string;
+            /** Format: uuid */
+            accountId: null | string;
+            /** Format: uuid */
+            fromAccountId: null | string;
+            /** Format: uuid */
+            toAccountId: null | string;
+            /** Format: uuid */
+            paymentModeId: null | string;
+            receivedFrom: null | string;
+            paidTo: null | string;
+            purpose: null | string;
+            referenceNumber: null | string;
+            remarks: null | string;
+            adjustmentDirection: null | components["schemas"]["AdjustmentDirection"];
+            reason: null | string;
         };
         UpdateUserRequest: {
             fullName: string;
@@ -2761,7 +2944,202 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TransactionDto"];
+                    "application/json": components["schemas"]["TransactionDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateTransaction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTransactionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelTransaction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelTransactionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetTransactionHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryEntry"][];
                 };
             };
             /** @description Not Found */
@@ -2828,6 +3206,151 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateAdjustment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAdjustmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListAuditLogs: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                userId?: string;
+                group?: string;
+                action?: string;
+                fundId?: string;
+                q?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ExportAuditLogs: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                userId?: string;
+                group?: string;
+                action?: string;
+                fundId?: string;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -64,7 +64,8 @@
     "lookups": "Payment modes & fund types",
     "audit": "Audit log",
     "settings": "Settings",
-    "notFound": "Page not found"
+    "notFound": "Page not found",
+    "newAdjustment": "Adjustment"
   },
   "system": {
     "title": "System info",
@@ -277,7 +278,40 @@
     "details": "Details",
     "accountability": "Who recorded this",
     "recordedBy": "Recorded by {{name}} on {{when}}",
-    "source": "Entered {{source}}"
+    "source": "Entered {{source}}",
+    "editTitle": "Edit {{number}}",
+    "saveChanges": "Save changes",
+    "updatedToast": "Updated · {{number}}",
+    "editReason": "Reason for the change",
+    "editReasonHint": "Shown in the history and the audit log.",
+    "errReason": "Give a reason for this change.",
+    "cannotEdit": "This entry can't be edited any more. Ask an Admin if it needs correcting.",
+    "backToEntry": "Back to the entry",
+    "cancelEntry": "Cancel entry",
+    "keepEntry": "Keep entry",
+    "cancelTitle": "Cancel {{number}}?",
+    "cancelBody": "The entry of {{amount}} stays in the ledger and its history, but stops counting in balances. This can’t be undone.",
+    "cancelReason": "Reason for cancelling",
+    "cancelReasonHint": "At least 5 characters. Shown in the history and the audit log.",
+    "cancelledToast": "Cancelled · {{number}}",
+    "cancelledBy": "Cancelled by {{name}} on {{when}}",
+    "cancelReasonShown": "Reason: {{reason}}",
+    "cancelledNote": "Not counted in any balance or report total.",
+    "editableUntil": "You can edit this until {{when}}.",
+    "lastEditedBy": "Last edited by {{name}} on {{when}}",
+    "history": "History",
+    "historyReason": "Reason: {{reason}}",
+    "historyKind": {
+      "CREATED": "Recorded",
+      "EDITED": "Edited",
+      "CANCELLED": "Cancelled"
+    },
+    "direction": "Direction",
+    "dir": {
+      "INCREASE": "Increase balance",
+      "DECREASE": "Decrease balance"
+    },
+    "status": "Status"
   },
   "ledger": {
     "ownOnly": "My transactions only",
@@ -347,5 +381,37 @@
     "fundTypes": "Fund types",
     "requiresReference": "Needs a reference number (UPI id, cheque no.)",
     "needsRef": "Needs reference"
+  },
+  "adjust": {
+    "intro": "Use an adjustment only to correct an account balance after a cash count or bank reconciliation. To fix a wrong entry, edit or cancel that entry instead.",
+    "reason": "Reason",
+    "reasonHint": "At least 10 characters, e.g. \"Cash count on 8 Oct was ₹100 short\".",
+    "errReason": "Give a reason of at least 10 characters.",
+    "save": "Save adjustment",
+    "confirmBody": "{{account}} currently has {{balance}}."
+  },
+  "audit": {
+    "export": "Export CSV",
+    "exportNote": "The export uses the filters above (up to 5,000 rows) and is itself recorded in this log.",
+    "from": "From",
+    "to": "To",
+    "group": "Activity",
+    "search": "Search",
+    "searchHint": "Name, action, reason or id",
+    "groups": {
+      "ALL": "All activity",
+      "TRANSACTIONS": "Entries",
+      "FUNDS": "Funds",
+      "USERS": "Users",
+      "MASTER": "Accounts & categories",
+      "AUTH": "Sign-ins & PINs",
+      "SYSTEM": "System & exports"
+    },
+    "empty": "Nothing matches these filters.",
+    "loadMore": "Load more",
+    "system": "System",
+    "showChanges": "Show values",
+    "before": "Before",
+    "after": "After"
   }
 }

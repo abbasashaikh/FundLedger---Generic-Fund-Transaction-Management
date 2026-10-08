@@ -205,6 +205,24 @@ All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining d
 - Creation, modification and cancellation are audited.
 - No hard-delete path exists. This is verified both by an API route scan test and by the DB grants.
 
+### Phase 3 status (09-Oct-2026)
+
+| ID | Status | Notes |
+|---|---|---|
+| P3-01 | 🟡 | Detail returns what the caller may do (`canEdit`, `canCancel`, `editableUntil`, `editRequiresReason`) with the revision as `ETag`. The attachments strip waits for P3-07 |
+| P3-02 | ✅ | `PUT /transactions/{id}` needs `If-Match` (428 without it, 412 on a stale revision; a 4-way race lets exactly one win). Member: own entry, inside `txn.edit_window_minutes`, still holding the capability. Admin: any active entry, reason required. Same validation as new entries; a category or account turned off later can be kept. Saving with no change writes no revision |
+| P3-03 | ✅ | Admin-only cancel with reason (≥ 5 chars), `If-Match`, terminal. The entry stays listed but leaves every balance. Cancelling now bumps the revision (migration `Accountability`, `guard_transactions()`) so it is a step in the history like an edit |
+| P3-04 | ✅ | `GET /transactions/{id}/history`: Recorded / Edited / Cancelled with who, when, reason and old → new values by field name |
+| P3-05 | ✅ | `POST /transactions/adjustment` (Admin; reason ≥ 10 chars; increase or decrease one account). Adjustments are corrected by cancel + re-record, so the web has no edit form for them |
+| P3-06 | ✅ | `GET /audit-logs` (date range in org time, user, action group or action, fund, free text; paged) and `/audit-logs/export`. **Deviation:** the CSV is built synchronously and capped at 5,000 rows; bigger exports belong to the async export pipeline (TRD §10.2). Cells starting with `= + - @` are neutralised; the export itself is audited |
+| P3-07 | ⏸ | **Deferred to its own PR.** It needs the R2 bucket and credentials (an owner action) and a decision on the image re-encoding library and its licence |
+
+**Verified:** all API tests pass against Neon, including the new accountability suite (edit window, reason, 412/428, a race, cancel, adjustments, history, audit filters/paging/tenant scope, CSV injection, no DELETE routes). Web tests cover detail, edit with `If-Match`, cancel, the 412 message, the audit screen and the Admin-only routes. The edit → cancel → adjustment → audit flow was also driven in a browser against the staging Neon branch.
+
+**Found and fixed:**
+- Filtering the audit log by date returned 500, because Npgsql only accepts UTC `timestamptz` parameters.
+- The audit CSV had no UTF-8 BOM (`Encoding.GetBytes` never writes one), so Excel would garble non-English names.
+
 ---
 
 ## 6. Phase 4 — Reports (W8–W9)

@@ -1,5 +1,6 @@
 using FluentValidation;
 using FundLedger.Application.Abstractions;
+using FundLedger.Application.Audit;
 using FundLedger.Application.Auth;
 using FundLedger.Application.Bootstrap;
 using FundLedger.Application.Funds;
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<FundService>();
         services.AddScoped<LookupService>();
         services.AddScoped<LedgerService>();
+        services.AddScoped<AuditService>();
         services.AddScoped<MeService>();
         services.AddScoped<BootstrapService>();
         services.AddValidatorsFromAssemblyContaining<CreateUserRequestValidator>(ServiceLifetime.Singleton);

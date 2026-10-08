@@ -16,6 +16,7 @@ import { toast } from '../../lib/toast'
 export type EntryKind = 'in' | 'out' | 'transfer'
 
 type Result = Schemas['TransactionResult']
+type Detail = Schemas['TransactionDetail']
 type Remembered = { categoryId?: string; accountId?: string; modeId?: string; fromId?: string; toId?: string }
 
 const memKey = (kind: EntryKind, fundId: string) => `fl.last.${kind}.${fundId}`
@@ -58,27 +59,44 @@ function Notice({ text }: { text: string }) {
   )
 }
 
-function EntryForm({ kind, fund }: { kind: EntryKind; fund: { id: string; name: string } }) {
+/** Active options, plus the one an entry being edited already uses (it may have been turned off since). */
+function usable<T extends { id: string; isActive: boolean }>(list: T[] | undefined, keep: (string | undefined)[]): T[] | undefined {
+  return list?.filter((o) => o.isActive || keep.includes(o.id))
+}
+
+/**
+ * The entry form. With `edit`, it edits an existing entry (S07 → Edit, App Flow §4.6): fields start from
+ * the saved values, the save sends If-Match with the revision that was loaded, and an Admin must give a reason.
+ */
+export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: string; name: string }; edit?: Detail }) {
   const meta = META[kind]
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const x = edit?.transaction
 
-  const accounts = useAccounts()
-  const modes = usePaymentModes()
-  const categories = useCategories(meta.direction, fund.id)
+  const keep = [x?.category?.id, x?.account?.id, x?.fromAccount?.id, x?.toAccount?.id, x?.paymentMode?.id]
+  const accountsQ = useAccounts(!!edit)
+  const modesQ = usePaymentModes(!!edit)
+  const categoriesQ = useCategories(meta.direction, fund.id, !!edit)
+  const accounts = { data: usable(accountsQ.data, keep) }
+  const modes = { data: usable(modesQ.data, keep) }
+  const categories = { data: usable(categoriesQ.data, keep) }
   const balances = useAccountBalances(kind === 'transfer' ? fund.id : undefined)
 
-  const remembered = useMemo(() => recall(kind, fund.id), [kind, fund.id])
-  const [amount, setAmount] = useState('')
+  const remembered = useMemo<Remembered>(() => (x
+    ? { categoryId: x.category?.id, accountId: x.account?.id, modeId: x.paymentMode?.id, fromId: x.fromAccount?.id, toId: x.toAccount?.id }
+    : recall(kind, fund.id)), [kind, fund.id, x])
+  const [amount, setAmount] = useState(() => x?.amount ?? '')
   const [chosen, setChosen] = useState<Remembered>({})
-  const [purposeText, setPurposeText] = useState<string | undefined>(undefined)
-  const [party, setParty] = useState('')
-  const [reference, setReference] = useState('')
-  const [remarks, setRemarks] = useState('')
-  const [date, setDate] = useState(() => todayIso())
-  const [time, setTime] = useState(() => nowTime())
-  const [moreOpen, setMoreOpen] = useState(false)
+  const [purposeText, setPurposeText] = useState<string | undefined>(() => x?.purpose ?? undefined)
+  const [party, setParty] = useState(() => x?.receivedFrom ?? x?.paidTo ?? '')
+  const [reference, setReference] = useState(() => x?.referenceNumber ?? '')
+  const [remarks, setRemarks] = useState(() => x?.remarks ?? '')
+  const [date, setDate] = useState(() => x?.txnDate ?? todayIso())
+  const [time, setTime] = useState(() => x?.txnTime.slice(0, 5) ?? nowTime())
+  const [reason, setReason] = useState('')
+  const [moreOpen, setMoreOpen] = useState(!!edit)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [banner, setBanner] = useState<string | null>(null)
   const [confirm, setConfirm] = useState(false)
@@ -110,6 +128,20 @@ function EntryForm({ kind, fund }: { kind: EntryKind; fund: { id: string; name: 
 
   const save = useMutation({
     mutationFn: async (): Promise<Result> => {
+      if (x) {
+        return unwrap(await api.PUT('/api/v1/transactions/{id}', {
+          params: { path: { id: x.id }, header: { 'If-Match': `"${x.revision}"` } },
+          body: {
+            amount: wire!, txnDate: date, txnTime: time,
+            categoryId: kind === 'transfer' ? null : categoryId, accountId: kind === 'transfer' ? null : accountId,
+            fromAccountId: kind === 'transfer' ? fromId : null, toAccountId: kind === 'transfer' ? toId : null,
+            paymentModeId: kind === 'transfer' ? x.paymentMode?.id ?? null : modeId,
+            receivedFrom: kind === 'in' ? party.trim() || null : null, paidTo: kind === 'out' ? party.trim() || null : null,
+            purpose: purpose.trim(), referenceNumber: reference.trim() || null, remarks: remarks.trim() || null,
+            adjustmentDirection: null, reason: reason.trim() || null,
+          },
+        }))
+      }
       const common = { fundId: fund.id, amount: wire!, txnDate: date, txnTime: time, remarks: remarks.trim() || null, clientTxnId }
       if (kind === 'in') {
         return unwrap(await api.POST('/api/v1/transactions/deposit', {
@@ -126,6 +158,13 @@ function EntryForm({ kind, fund }: { kind: EntryKind; fund: { id: string; name: 
       }))
     },
     onSuccess: async (result) => {
+      if (x) {
+        setConfirm(false)
+        toast.success(t('txn.updatedToast', { number: result.transaction.txnNumber }))
+        await Promise.all(['dashboard', 'transactions', 'account-balances', 'transaction'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+        void navigate(`/txn/${x.id}`, { replace: true })
+        return
+      }
       localStorage.setItem(memKey(kind, fund.id), JSON.stringify({ categoryId, accountId, modeId, fromId, toId } satisfies Remembered))
       setConfirm(false)
       setSaved(result)
@@ -155,6 +194,7 @@ function EntryForm({ kind, fund }: { kind: EntryKind; fund: { id: string; name: 
       if (!fromId || !toId || fromId === toId) next.toAccountId = [t('txn.errTransferAccounts')]
     }
     if (!purpose.trim()) next.purpose = [t('txn.errPurpose')]
+    if (edit?.editRequiresReason && !reason.trim()) next.reason = [t('txn.errReason')]
     setErrors(next)
     setBanner(null)
     if (Object.keys(next).length === 0) {
@@ -200,9 +240,9 @@ function EntryForm({ kind, fund }: { kind: EntryKind; fund: { id: string; name: 
   return (
     <div className="mx-auto grid max-w-xl gap-5">
       <div className="flex items-center gap-2">
-        <Link to="/" aria-label={t('actions.close')} className="flex size-11 items-center justify-center rounded-md hover:bg-surface-muted"><ArrowLeft aria-hidden className="size-5" /></Link>
+        <Link to={x ? `/txn/${x.id}` : '/'} aria-label={t('actions.close')} className="flex size-11 items-center justify-center rounded-md hover:bg-surface-muted"><ArrowLeft aria-hidden className="size-5" /></Link>
         <div>
-          <h1 className="text-xl font-semibold">{t(meta.title)}</h1>
+          <h1 className="text-xl font-semibold">{x ? t('txn.editTitle', { number: x.txnNumber }) : t(meta.title)}</h1>
           <p className="text-sm text-text-muted">{fund.name}</p>
         </div>
       </div>
@@ -258,13 +298,18 @@ function EntryForm({ kind, fund }: { kind: EntryKind; fund: { id: string; name: 
           </div>
         )}
 
+        {edit?.editRequiresReason && (
+          <Field label={t('txn.editReason')} required value={reason} onChange={(e) => setReason(e.target.value)} error={err('reason')} maxLength={500}
+            hint={t('txn.editReasonHint')} />
+        )}
+
         <Button type="submit" size="lg" className="sticky bottom-20 lg:static">{t('txn.review')}</Button>
       </form>
 
       <Dialog open={confirm} onClose={() => setConfirm(false)} title={t('txn.confirmTitle', { type: t(`txn.type.${meta.type}`) })}
         footer={<>
           <Button variant="secondary" onClick={() => setConfirm(false)}>{t('txn.edit')}</Button>
-          <Button loading={save.isPending} onClick={() => save.mutate()}>{t(meta.save)}</Button>
+          <Button loading={save.isPending} onClick={() => save.mutate()}>{x ? t('txn.saveChanges') : t(meta.save)}</Button>
         </>}>
         <p className="amount text-center text-3xl font-bold" aria-label={`${t(`txn.type.${meta.type}`)} ${wire ?? ''}`}>{wire ? formatRupees(wire) : ''}</p>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
@@ -281,6 +326,7 @@ function EntryForm({ kind, fund }: { kind: EntryKind; fund: { id: string; name: 
           <dt className="text-text-muted">{t('txn.when')}</dt><dd>{formatDate(date)} {formatTime(time)}</dd>
           <dt className="text-text-muted">{t('txn.purpose')}</dt><dd>{purpose}</dd>
           {reference && <><dt className="text-text-muted">{t('txn.reference')}</dt><dd>{reference}</dd></>}
+          {reason.trim() && <><dt className="text-text-muted">{t('txn.editReason')}</dt><dd>{reason.trim()}</dd></>}
         </dl>
         {kind === 'transfer' && <p className="text-sm text-text-muted">{t('txn.fundUnchanged')}</p>}
       </Dialog>

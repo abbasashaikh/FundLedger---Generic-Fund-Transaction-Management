@@ -108,6 +108,33 @@ public sealed record Books(TestOrg Org, Session Admin, Guid FundId, string FundC
         return (m.Id, s);
     }
 
+    /// <summary>Creates an entry and returns its id and revision (the revision is what later edits must send in If-Match).</summary>
+    public static async Task<(Guid Id, int Revision, JsonElement Txn)> RecordAsync(Session who, string kind, object body)
+    {
+        var r = await who.PostAsync($"/api/v1/transactions/{kind}", body);
+        r.EnsureSuccessStatusCode();
+        var txn = (await JsonAsync(r)).GetProperty("transaction");
+        return (txn.GetProperty("id").GetGuid(), txn.GetProperty("revision").GetInt32(), txn);
+    }
+
+    /// <summary>The full edit body for an existing entry (all editable fields as they are now), with overrides applied.</summary>
+    public static Dictionary<string, object?> EditBody(JsonElement txn, Action<Dictionary<string, object?>>? change = null)
+    {
+        static Guid? RefId(JsonElement t, string name) => t.GetProperty(name).ValueKind == JsonValueKind.Null ? null : t.GetProperty(name).GetProperty("id").GetGuid();
+        static string? Str(JsonElement t, string name) => t.GetProperty(name).ValueKind == JsonValueKind.Null ? null : t.GetProperty(name).GetString();
+        var body = new Dictionary<string, object?>
+        {
+            ["amount"] = Str(txn, "amount"), ["txnDate"] = Str(txn, "txnDate"), ["txnTime"] = Str(txn, "txnTime"),
+            ["categoryId"] = RefId(txn, "category"), ["accountId"] = RefId(txn, "account"),
+            ["fromAccountId"] = RefId(txn, "fromAccount"), ["toAccountId"] = RefId(txn, "toAccount"), ["paymentModeId"] = RefId(txn, "paymentMode"),
+            ["receivedFrom"] = Str(txn, "receivedFrom"), ["paidTo"] = Str(txn, "paidTo"), ["purpose"] = Str(txn, "purpose"),
+            ["referenceNumber"] = Str(txn, "referenceNumber"), ["remarks"] = Str(txn, "remarks"),
+            ["adjustmentDirection"] = Str(txn, "adjustmentDirection"), ["reason"] = null,
+        };
+        change?.Invoke(body);
+        return body;
+    }
+
     public static async Task<JsonElement> JsonAsync(HttpResponseMessage r)
     {
         var text = await r.Content.ReadAsStringAsync();

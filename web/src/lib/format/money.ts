@@ -44,3 +44,42 @@ export function formatSigned(type: TxnType, amount: string, adjustment?: 'INCREA
       return `${adjustment === 'DECREASE' ? '−' : '+'} ${value}`
   }
 }
+
+/** Live grouping for an amount being typed: "125000.5" -> "1,25,000.5" (integer part only; keeps what the user typed after the dot). */
+export function groupWhileTyping(raw: string): string {
+  const [intPart = '', frac] = raw.split('.')
+  const head = intPart.slice(0, -3)
+  const grouped = head ? `${head.replace(GROUP_RE, ',')},${intPart.slice(-3)}` : intPart
+  return frac === undefined ? grouped : `${grouped}.${frac}`
+}
+
+/** Sanitizes pasted/typed text to a plain amount: digits and one dot, at most 2 decimals ("₹1,25,000.567" -> "125000.56"). */
+export function sanitizeAmount(text: string): string {
+  const cleaned = text.replace(/[^\d.]/g, '')
+  const dot = cleaned.indexOf('.')
+  const intPart = (dot === -1 ? cleaned : cleaned.slice(0, dot)).replace(/^0+(?=\d)/, '')
+  if (dot === -1) return intPart
+  return `${intPart}.${cleaned.slice(dot + 1).replace(/\./g, '').slice(0, 2)}`
+}
+
+/** Normalizes a typed amount to the wire format "25000.00", or null when it is not a positive amount. */
+export function toWireAmount(raw: string): string | null {
+  if (!/^\d+(\.\d{0,2})?$/.test(raw)) return null
+  const [i = '0', f = ''] = raw.split('.')
+  const wire = `${i}.${f.padEnd(2, '0')}`
+  return /[1-9]/.test(wire) ? wire : null   // positive: any non-zero digit (no float maths on money)
+}
+
+function toPaise(amount: string): bigint {
+  const negative = amount.trim().startsWith('-')
+  const [i = '0', f = ''] = amount.trim().replace(/^-/, '').split('.')
+  const paise = BigInt(`${i}${f.padEnd(2, '0').slice(0, 2)}`)
+  return negative ? -paise : paise
+}
+
+/** Exact comparison of two decimal-string amounts (-1, 0, 1) without floating point. */
+export function compareAmounts(a: string, b: string): -1 | 0 | 1 {
+  const x = toPaise(a)
+  const y = toPaise(b)
+  return x < y ? -1 : x > y ? 1 : 0
+}

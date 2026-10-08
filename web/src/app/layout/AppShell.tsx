@@ -9,6 +9,7 @@ import { QuickActionSheet } from './QuickActionSheet'
 import { UpdatePrompt } from '../../pwa/UpdatePrompt'
 import { OfflineBanner } from '../../pwa/OfflineBanner'
 import { FundSwitcher } from './FundSwitcher'
+import { Toaster } from '../../components/toast'
 import { useSession } from '../../lib/auth/session'
 
 // Layout per docs/02-App-Flow.md §2: bottom nav + centre (＋) on mobile,
@@ -103,6 +104,7 @@ export function AppShell() {
       </div>
 
       <QuickActionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <Toaster />
     </div>
   )
 }

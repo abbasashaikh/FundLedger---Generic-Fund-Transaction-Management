@@ -81,7 +81,7 @@ function UserForm({ id, initial }: { id: string | undefined; initial: UserDetail
         }))
       }
 
-      const updated = await unwrap(await api.PUT('/api/v1/users/{id}', {
+      const updated = unwrap(await api.PUT('/api/v1/users/{id}', {
         params: { path: { id: id! } },
         body: { fullName, mobile, email: email || null, role, version: initial!.version },
       }))

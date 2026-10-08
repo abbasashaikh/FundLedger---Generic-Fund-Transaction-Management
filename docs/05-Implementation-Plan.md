@@ -153,6 +153,33 @@ All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining d
 | P2-10 | Fund switcher + global fund context; closed-fund read-only behaviour | S05 | E2E |
 | P2-11 | Basic dashboard (balance card, quick actions, recent); full version in Phase 4 | S04 | |
 
+### Phase 2 status (08-Oct-2026)
+
+| ID | Status | Notes |
+|---|---|---|
+| P2-01 | ✅ | Fund CRUD and lifecycle Draft → Active → Closed → Archived (+ reopen with reason); code locks after the first transaction |
+| P2-02 | ✅ | Accounts CRUD; opening balances per (fund, account), reason required on an active fund, audited (BR-015) |
+| P2-03 | ✅ | Categories (direction, fund scope), payment modes (requires reference), fund types |
+| P2-04 | ✅ | Ledger write pipeline (TRD §7.2): permission → fund active → references/dates → FY number → insert → revision 1 → audit |
+| P2-05 | ✅ | `deposit` / `expense` / `transfer`; `clientTxnId` idempotency (200 + original entry on retry, 409 for someone else's id) |
+| P2-06 | ✅ | `/accounts/balances`, fund balance in every create response; the PRD worked example is an integration test |
+| P2-07 | 🟡 | `AmountInput`, `ChipGroup`, confirm dialog built. Storybook and axe checks deferred to the first polish pass |
+| P2-08 | ✅ | Money In / Out / Transfer forms: defaults from last use, confirm step, "Add another" gets a new client id. The scripted ≤ 30 s E2E timing test is deferred to Phase 6 UAT |
+| P2-09 | 🟡 | Ledger: date groups, search, filters, sort, totals, paging. **Deviations:** paging cursor is an opaque offset (not keyset); no separate desktop table (the responsive list is used on desktop too) |
+| P2-10 | ✅ | Fund switcher; closed fund is readable but entry is disabled with an explanation |
+| P2-11 | ✅ | Dashboard: balance, in/out, today, quick actions, account balances, recent |
+
+**Deviations from the App Flow doc (decided while building):**
+- Activating a fund does **not** require an opening-balance row. A fund can start at zero.
+- Transaction detail is read-only for now. Edit, cancel, history and the audit screen are Phase 3.
+
+**Verified:** all API tests pass against Neon, 37 web tests pass, and the app was driven in a browser against a real Neon branch. The PRD example (opening 5,000 cash / 10,000 bank; +25,000; −8,500; transfer 20,000) gives cash ₹1,500, bank ₹30,000, fund ₹31,500.
+
+**Found and fixed:**
+- The typed web client lost every server error message (a second read of an already-read response body), which also affected Phase 1's screens.
+- Query-string enums (`?type=EXPENSE`, `?status=ACTIVE`) did not bind. A new `EnumQuery<T>` binder accepts the wire form in any case.
+- A startup check ran too early and made the OpenAPI generator emit an empty contract (and I had committed it). It is now a hosted service, and CI asserts the contract has paths.
+
 **Exit criteria (from PRD §29):**
 - Money In, Money Out and Transfer are recorded with all required fields.
 - Transfers don't change the fund total.

@@ -8,6 +8,8 @@ import { ApiError, unwrap } from '../../lib/api/errors'
 import { formatDate, formatDateTime, formatTime } from '../../lib/format/date'
 import { formatRupees } from '../../lib/format/money'
 import { useTransactionDetail } from '../../lib/api/hooks'
+import { useMe } from '../../lib/auth/queries'
+import { ReceiptButton } from '../../components/ReceiptButton'
 import { Badge, Button, Dialog, ErrorBanner } from '../../components/ui'
 import { Section, SignedAmount, TxnTypeBadge } from '../../components/ui/money'
 import { toast } from '../../lib/toast'
@@ -29,6 +31,7 @@ export function TransactionDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const detail = useTransactionDetail(id)
+  const me = useMe()
   const [cancelOpen, setCancelOpen] = useState(false)
 
   if (detail.isPending) return <p className="text-text-muted">{t('app.loading')}</p>
@@ -78,8 +81,9 @@ export function TransactionDetailPage() {
         <p className="text-sm text-text-muted">{formatRupees(x.amount)}</p>
       </div>
 
-      {(canEdit || canCancel) && (
+      {(canEdit || canCancel || (x.type === 'DEPOSIT' && me.data?.organization.receiptsEnabled)) && (
         <div className="flex flex-wrap items-center gap-2">
+          {x.type === 'DEPOSIT' && me.data?.organization.receiptsEnabled && <ReceiptButton id={x.id} mode="download" />}
           {canEdit && (
             <Button variant="secondary" onClick={() => void navigate(`/txn/${x.id}/edit`)}><Pencil aria-hidden className="size-4" />{t('txn.edit')}</Button>
           )}

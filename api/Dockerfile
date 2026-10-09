@@ -39,6 +39,11 @@ COPY --from=build /out/worker ./worker
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh
 
+# PDF receipts and reports (QuestPDF) draw names in Hindi, Gujarati, Urdu... from system fonts; the bundled
+# font is Latin only. Noto covers those scripts; fontconfig lets Skia find them.
+USER root
+RUN apt-get update  && apt-get install -y --no-install-recommends fontconfig fonts-noto-core  && rm -rf /var/lib/apt/lists/*
+
 # Non-root user provided by the .NET base image.
 USER $APP_UID
 EXPOSE 8080

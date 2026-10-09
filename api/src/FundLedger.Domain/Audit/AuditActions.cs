@@ -37,6 +37,9 @@ public static class AuditActions
     public const string TxnUpdated = "TXN_UPDATED";
     public const string TxnCancelled = "TXN_CANCELLED";
     public const string AuditExported = "AUDIT_EXPORTED";
+    public const string SettingsChanged = "SETTINGS_CHANGED";
+    public const string ExportPerformed = "EXPORT_PERFORMED";
+    public const string ReceiptGenerated = "RECEIPT_GENERATED";
 }
 
 public static class AuditEntities

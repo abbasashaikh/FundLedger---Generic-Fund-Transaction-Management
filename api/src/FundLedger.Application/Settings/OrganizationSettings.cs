@@ -23,6 +23,12 @@ public sealed record OrganizationSettings
 
     public decimal MaxAmount { get; init; } = 1_000_000.00m;
 
+    public bool ReceiptEnabled { get; init; } = true;
+
+    public string ReceiptFooterText { get; init; } = "Computer-generated receipt. No signature required.";
+
+    public bool ReceiptShowRecordedBy { get; init; } = true;
+
     public static OrganizationSettings Defaults { get; } = new();
 
     /// <summary>Builds settings from raw key → JSON value pairs, clamping to documented ranges.</summary>
@@ -39,6 +45,9 @@ public sealed record OrganizationSettings
             EditWindowMinutes = Int(raw, "txn.edit_window_minutes", d.EditWindowMinutes, 0, 1440),
             BackdateDaysMember = Int(raw, "txn.backdate_days_member", d.BackdateDaysMember, 0, 365),
             MaxAmount = Dec(raw, "txn.max_amount", d.MaxAmount),
+            ReceiptEnabled = Bool(raw, "receipt.enabled", d.ReceiptEnabled),
+            ReceiptFooterText = Str(raw, "receipt.footer_text", d.ReceiptFooterText, 200),
+            ReceiptShowRecordedBy = Bool(raw, "receipt.show_recorded_by", d.ReceiptShowRecordedBy),
         };
     }
 
@@ -55,6 +64,48 @@ public sealed record OrganizationSettings
             return doc.RootElement.ValueKind == JsonValueKind.Number && doc.RootElement.TryGetInt32(out var v)
                 ? Math.Clamp(v, min, max)
                 : fallback;
+        }
+        catch (JsonException)
+        {
+            return fallback;
+        }
+    }
+
+    private static bool Bool(IReadOnlyDictionary<string, string> raw, string key, bool fallback)
+    {
+        if (!raw.TryGetValue(key, out var json))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => fallback,
+            };
+        }
+        catch (JsonException)
+        {
+            return fallback;
+        }
+    }
+
+    private static string Str(IReadOnlyDictionary<string, string> raw, string key, string fallback, int maxLength)
+    {
+        if (!raw.TryGetValue(key, out var json))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var v = doc.RootElement.ValueKind == JsonValueKind.String ? doc.RootElement.GetString() : null;
+            return v is null ? fallback : v.Length > maxLength ? v[..maxLength] : v;
         }
         catch (JsonException)
         {
@@ -86,4 +137,7 @@ public sealed record OrganizationSettings
 public interface ISettingsProvider
 {
     Task<OrganizationSettings> GetAsync(CancellationToken ct);
+
+    /// <summary>Drops the per-request cache after settings were written, so the next read sees them.</summary>
+    void Invalidate();
 }

@@ -1,7 +1,6 @@
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import { AppShell } from './layout/AppShell'
 import { RedirectIfSignedIn, RequireAdmin, RequireAuth } from './guards'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { MorePage } from '../pages/MorePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { LoginPage } from '../pages/auth/LoginPage'
@@ -14,6 +13,10 @@ import { TransactionDetailPage } from '../pages/ledger/TransactionDetailPage'
 import { TransactionEditPage } from '../pages/ledger/TransactionEditPage'
 import { AdjustmentFormPage } from '../pages/money/AdjustmentFormPage'
 import { AuditLogPage } from '../pages/admin/AuditLogPage'
+import { SettingsPage } from '../pages/admin/SettingsPage'
+import { ReportsHubPage } from '../pages/reports/ReportsHubPage'
+import { ReportViewerPage } from '../pages/reports/ReportViewerPage'
+import { ExportsPage } from '../pages/reports/ExportsPage'
 import { TransactionFormPage } from '../pages/money/TransactionFormPage'
 import { FundsPage } from '../pages/admin/FundsPage'
 import { FundFormPage } from '../pages/admin/FundFormPage'
@@ -32,7 +35,9 @@ export const routes: RouteObject[] = [
       { path: 'ledger', element: <LedgerPage /> },
       { path: 'txn/:id', element: <TransactionDetailPage /> },
       { path: 'txn/:id/edit', element: <TransactionEditPage /> },
-      { path: 'reports', element: <PlaceholderPage screen="reports" phase="Phase 4" /> },
+      { path: 'reports', element: <ReportsHubPage /> },
+      { path: 'reports/exports', element: <ExportsPage /> },
+      { path: 'reports/:code', element: <ReportViewerPage /> },
       { path: 'more', element: <MorePage /> },
       { path: 'new/in', element: <TransactionFormPage kind="in" /> },
       { path: 'new/out', element: <TransactionFormPage kind="out" /> },
@@ -46,7 +51,7 @@ export const routes: RouteObject[] = [
       { path: 'admin/categories', element: admin(<CategoriesPage />) },
       { path: 'admin/lookups', element: admin(<LookupsPage />) },
       { path: 'admin/audit', element: admin(<AuditLogPage />) },
-      { path: 'admin/settings', element: admin(<PlaceholderPage screen="settings" phase="Phase 4" />) },
+      { path: 'admin/settings', element: admin(<SettingsPage />) },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

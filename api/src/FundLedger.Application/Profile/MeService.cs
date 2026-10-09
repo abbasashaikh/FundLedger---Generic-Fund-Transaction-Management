@@ -1,5 +1,6 @@
 using FundLedger.Application.Abstractions;
 using FundLedger.Application.Errors;
+using FundLedger.Application.Settings;
 using FundLedger.Domain.Funds;
 using FundLedger.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,8 @@ public sealed record FundPermissions(
 
 public sealed record AccessibleFund(Guid Id, string Code, string Name, FundStatus Status, FundPermissions Permissions);
 
-public sealed record OrganizationInfo(Guid Id, string Name, string ShortCode, string CurrencyCode, string Timezone, string DateFormat);
+/// <param name="ReceiptsEnabled">Whether Money In receipts can be produced (setting <c>receipt.enabled</c>).</param>
+public sealed record OrganizationInfo(Guid Id, string Name, string ShortCode, string CurrencyCode, string Timezone, string DateFormat, bool ReceiptsEnabled);
 
 public sealed record MeResponse(
     Guid Id, string FullName, string Mobile, UserRole Role, bool PinMustChange,
@@ -21,7 +23,7 @@ public sealed record MeResponse(
 /// <c>GET /me</c> (TRD §11.2): who am I, what organization, and which funds with which
 /// permissions. The PWA builds its navigation and quick actions from this.
 /// </summary>
-public sealed class MeService(IFundLedgerDb db, ICurrentUser caller)
+public sealed class MeService(IFundLedgerDb db, ICurrentUser caller, ISettingsProvider settings)
 {
     private static readonly FundPermissions All = new(true, true, true, true, true, true, true);
 
@@ -32,7 +34,8 @@ public sealed class MeService(IFundLedgerDb db, ICurrentUser caller)
         var org = await db.Organizations.AsNoTracking().SingleAsync(ct).ConfigureAwait(false);
 
         return new MeResponse(user.Id, user.FullName, user.MobileE164, user.Role, user.PinMustChange,
-            new OrganizationInfo(org.Id, org.Name, org.ShortCode, org.CurrencyCode, org.Timezone, org.DateFormat),
+            new OrganizationInfo(org.Id, org.Name, org.ShortCode, org.CurrencyCode, org.Timezone, org.DateFormat,
+                (await settings.GetAsync(ct).ConfigureAwait(false)).ReceiptEnabled),
             user.PinMustChange ? [] : await ListAccessibleFundsAsync(ct).ConfigureAwait(false));
     }
 

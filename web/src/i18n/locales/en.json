@@ -347,7 +347,10 @@
     "today": "Today",
     "accounts": "Accounts",
     "recent": "Recent",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "trend": "Last 30 days",
+    "topCategories": "Top spending categories",
+    "noTrend": "No entries in the last 30 days."
   },
   "master": {
     "saved": "Saved.",
@@ -413,5 +416,99 @@
     "showChanges": "Show values",
     "before": "Before",
     "after": "After"
+  },
+  "receipt": {
+    "share": "Share receipt",
+    "download": "Receipt (PDF)",
+    "shareTitle": "Receipt",
+    "downloaded": "Receipt saved to your downloads."
+  },
+  "reports": {
+    "noAccess": "You don't have access to reports for this fund.",
+    "myDownloads": "My downloads",
+    "export": "Export",
+    "period": "Period",
+    "summary": "Summary",
+    "empty": "Nothing to show for this period.",
+    "truncated": "Only the first rows are shown. Narrow the period, or export to get everything.",
+    "presets": {
+      "month": "This month",
+      "lastMonth": "Last month",
+      "today": "Today",
+      "week": "This week",
+      "fy": "This financial year",
+      "all": "Everything",
+      "custom": "Custom"
+    },
+    "format": "Format",
+    "formats": {
+      "XLSX": "Excel",
+      "CSV": "CSV",
+      "PDF": "PDF"
+    },
+    "preparing": "Preparing your report…",
+    "ready": "Your file is ready ({{rows}} rows).",
+    "download": "Download",
+    "exportFailed": "The export didn't finish. Please try again.",
+    "noExports": "No exports yet.",
+    "expiryNote": "Files are kept for 24 hours.",
+    "rows": "{{count}} rows",
+    "status": {
+      "QUEUED": "Waiting",
+      "RUNNING": "Preparing",
+      "SUCCEEDED": "Ready",
+      "FAILED": "Failed",
+      "EXPIRED": "Expired"
+    }
+  },
+  "settings": {
+    "saved": "Settings saved.",
+    "organization": "Organization",
+    "orgName": "Organization name",
+    "contactMobile": "Contact mobile",
+    "contactEmail": "Contact email",
+    "address": "Address",
+    "registrationNumber": "Registration number",
+    "registrationHint": "Printed on receipts (trust or society registration).",
+    "dateFormat": "Date format",
+    "timezone": "Time zone",
+    "currencyLocked": "Currency is INR in this version.",
+    "transactions": "Transactions",
+    "editWindow": "Edit window (minutes)",
+    "editWindowHint": "How long a Member can edit their own entry. 0 turns it off.",
+    "backdate": "Member backdate limit (days)",
+    "maxAmount": "Maximum amount per entry (₹)",
+    "numberingLocked": "Numbers follow the Indian financial year (April–March).",
+    "auth": "Sign-in",
+    "pinFailures": "Wrong PINs before lockout",
+    "lockoutMinutes": "Lockout (minutes)",
+    "idleMinutes": "Sign out after being idle (minutes)",
+    "sessionDays": "Sign in again after (days)",
+    "receipts": "Receipts",
+    "receiptsEnabled": "Allow Money In receipts",
+    "showRecordedBy": "Show \"Recorded by\" on receipts",
+    "footerText": "Receipt footer",
+    "noTaxClaim": "Receipts never claim any tax benefit.",
+    "confirmTitle": "Save these changes?",
+    "confirmSave": "Save changes",
+    "fields": {
+      "organization.name": "Organization name",
+      "organization.contactMobile": "Contact mobile",
+      "organization.contactEmail": "Contact email",
+      "organization.address": "Address",
+      "organization.registrationNumber": "Registration number",
+      "organization.timezone": "Time zone",
+      "organization.dateFormat": "Date format",
+      "transactions.editWindowMinutes": "Edit window (minutes)",
+      "transactions.backdateDaysMember": "Member backdate limit (days)",
+      "transactions.maxAmount": "Maximum amount",
+      "auth.pinMaxFailures": "Wrong PINs before lockout",
+      "auth.pinLockoutMinutes": "Lockout (minutes)",
+      "auth.sessionIdleMinutes": "Idle sign-out (minutes)",
+      "auth.sessionAbsoluteDays": "Sign in again after (days)",
+      "receipts.enabled": "Receipts allowed",
+      "receipts.footerText": "Receipt footer",
+      "receipts.showRecordedBy": "Show \"Recorded by\""
+    }
   }
 }

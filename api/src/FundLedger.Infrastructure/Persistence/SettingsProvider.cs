@@ -7,6 +7,8 @@ public sealed class SettingsProvider(FundLedgerDbContext db) : ISettingsProvider
 {
     private OrganizationSettings? _cached;
 
+    public void Invalidate() => _cached = null;
+
     public async Task<OrganizationSettings> GetAsync(CancellationToken ct)
     {
         if (_cached is not null)

@@ -556,6 +556,8 @@ CREATE TABLE fl.export_jobs (
   started_at         timestamptz,
   finished_at        timestamptz,
   expires_at         timestamptz,
+  content            bytea,                                  -- finished file, kept until expires_at then emptied
+  file_name          varchar(120),
   CONSTRAINT uq_export_idem UNIQUE (requested_by, idempotency_key)
 );
 CREATE INDEX ix_export_queue ON fl.export_jobs (status, created_at) WHERE status IN ('QUEUED','RUNNING');

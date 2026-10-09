@@ -6,7 +6,9 @@ using FundLedger.Api.Endpoints;
 using FundLedger.Api.Middleware;
 using FundLedger.Application;
 using FundLedger.Application.Abstractions;
+using FundLedger.Application.Reports;
 using FundLedger.Infrastructure;
+using FundLedger.Infrastructure.Exports;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
@@ -72,6 +74,10 @@ internal static class ApiSetup
         services.AddScoped<IRequestContext, HttpRequestContext>();
         services.AddFundLedgerAuth();
         services.AddHostedService<StartupChecks>();
+        // Exports are built off the request path by a background runner in the API process (docs: Phase 4 deviations).
+        services.AddSingleton<ExportRunner>();
+        services.AddSingleton<IExportDispatcher>(sp => sp.GetRequiredService<ExportRunner>());
+        services.AddHostedService(sp => sp.GetRequiredService<ExportRunner>());
 
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
@@ -176,6 +182,7 @@ internal static class ApiSetup
         UserEndpoints.Map(app);
         FinanceEndpoints.Map(app);
         AuditEndpoints.Map(app);
+        ReportEndpoints.Map(app);
 
         // The OpenAPI document is published outside production only (TRD §11.1).
         if (!app.Environment.IsProduction())

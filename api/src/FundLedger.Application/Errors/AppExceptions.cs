@@ -35,6 +35,20 @@ public sealed class UnauthenticatedException(string code = "UNAUTHENTICATED", st
     public override int Status => 401;
 }
 
+/// <summary>412 — the caller edited a stale copy (If-Match did not match the current revision).</summary>
+public sealed class PreconditionFailedException(string message = "This record was changed by someone else. Reload to see the latest version.")
+    : AppException("REVISION_CONFLICT", message)
+{
+    public override int Status => 412;
+}
+
+/// <summary>428 — an edit/cancel was sent without If-Match, so it could silently overwrite a newer revision.</summary>
+public sealed class PreconditionRequiredException()
+    : AppException("PRECONDITION_REQUIRED", "Send the revision you are editing in the If-Match header.")
+{
+    public override int Status => 428;
+}
+
 public sealed class TooManyAttemptsException(TimeSpan retryAfter)
     : AppException("ACCOUNT_LOCKED", "Too many attempts. Please try again later.")
 {

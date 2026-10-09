@@ -34,6 +34,9 @@ public static class AuditActions
     public const string LookupChanged = "LOOKUP_CHANGED";
 
     public const string TxnCreated = "TXN_CREATED";
+    public const string TxnUpdated = "TXN_UPDATED";
+    public const string TxnCancelled = "TXN_CANCELLED";
+    public const string AuditExported = "AUDIT_EXPORTED";
 }
 
 public static class AuditEntities

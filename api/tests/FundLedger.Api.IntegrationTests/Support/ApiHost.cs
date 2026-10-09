@@ -149,9 +149,10 @@ public sealed class Session(ApiHost host, HttpClient client)
 
     public Task<HttpResponseMessage> GetAsync(string path) => SendAsync(HttpMethod.Get, path, null);
 
-    public Task<HttpResponseMessage> PostAsync(string path, object? body) => SendAsync(HttpMethod.Post, path, body);
+    /// <param name="ifMatch">Sent as <c>If-Match: "n"</c> (the revision being edited); null sends no header.</param>
+    public Task<HttpResponseMessage> PostAsync(string path, object? body, int? ifMatch = null) => SendAsync(HttpMethod.Post, path, body, ifMatch);
 
-    public Task<HttpResponseMessage> PutAsync(string path, object? body) => SendAsync(HttpMethod.Put, path, body);
+    public Task<HttpResponseMessage> PutAsync(string path, object? body, int? ifMatch = null) => SendAsync(HttpMethod.Put, path, body, ifMatch);
 
     public Task<HttpResponseMessage> PatchAsync(string path, object? body) => SendAsync(HttpMethod.Patch, path, body);
 
@@ -162,9 +163,14 @@ public sealed class Session(ApiHost host, HttpClient client)
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body)
+    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body, int? ifMatch = null)
     {
         using var request = new HttpRequestMessage(method, path) { Content = body is null ? null : JsonContent.Create(body) };
+        if (ifMatch is { } rev)
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", $"\"{rev}\"");
+        }
+
         if (AccessToken is not null)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);

@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { api, type Schemas } from './client'
-import { unwrap } from './errors'
+import { type ApiError, unwrap } from './errors'
 
 export type Account = Schemas['AccountDto']
 export type Category = Schemas['CategoryDto']
@@ -8,6 +8,7 @@ export type PaymentMode = Schemas['PaymentModeDto']
 export type FundType = Schemas['FundTypeDto']
 export type Txn = Schemas['TransactionDto']
 export type AccountBalance = Schemas['AccountBalanceDto']
+export type TxnDetail = Schemas['TransactionDetail']
 
 // Master data changes rarely: keep it fresh for a few minutes. Keys include the fund where the
 // answer depends on it, so a cache entry can never be shown under another fund (TRD TR-006).
@@ -57,4 +58,12 @@ export const useDashboard = (fundId: string | undefined) =>
     queryKey: ['dashboard', fundId],
     enabled: !!fundId,
     queryFn: async () => unwrap(await api.GET('/api/v1/dashboard', { params: { query: { fundId: fundId! } } })),
+  })
+
+/** One entry plus what the caller may do with it (edit window, cancel). */
+export const useTransactionDetail = (id: string | undefined) =>
+  useQuery<TxnDetail, ApiError>({
+    queryKey: ['transaction', id],
+    enabled: !!id,
+    queryFn: async () => unwrap(await api.GET('/api/v1/transactions/{id}', { params: { path: { id: id! } } })),
   })

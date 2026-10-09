@@ -89,8 +89,22 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
         b.Property(x => x.Source).HasMaxLength(10);
         b.Property(x => x.CancellationReason).HasMaxLength(300);
         b.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
-        b.Property(x => x.Revision).HasDefaultValue(1);
+        // Optimistic concurrency (TRD TR-031): an UPDATE only matches the revision the caller saw.
+        b.Property(x => x.Revision).HasDefaultValue(1).IsConcurrencyToken();
         b.HasIndex(x => new { x.OrganizationId, x.TxnNumber }).IsUnique();
         b.HasIndex(x => new { x.OrganizationId, x.ClientTxnId }).IsUnique();
+    }
+}
+
+internal sealed class TransactionRevisionConfiguration : IEntityTypeConfiguration<TransactionRevision>
+{
+    public void Configure(EntityTypeBuilder<TransactionRevision> b)
+    {
+        b.ToTable("transaction_revisions");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedNever();
+        b.Property(x => x.Snapshot).HasColumnType("jsonb");
+        b.Property(x => x.ChangeReason).HasMaxLength(300);
+        b.HasIndex(x => new { x.TransactionId, x.Revision }).IsUnique();
     }
 }

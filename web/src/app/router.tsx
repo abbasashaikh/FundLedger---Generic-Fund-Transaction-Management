@@ -11,6 +11,9 @@ import { UserFormPage } from '../pages/admin/UserFormPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { LedgerPage } from '../pages/ledger/LedgerPage'
 import { TransactionDetailPage } from '../pages/ledger/TransactionDetailPage'
+import { TransactionEditPage } from '../pages/ledger/TransactionEditPage'
+import { AdjustmentFormPage } from '../pages/money/AdjustmentFormPage'
+import { AuditLogPage } from '../pages/admin/AuditLogPage'
 import { TransactionFormPage } from '../pages/money/TransactionFormPage'
 import { FundsPage } from '../pages/admin/FundsPage'
 import { FundFormPage } from '../pages/admin/FundFormPage'
@@ -28,11 +31,13 @@ export const routes: RouteObject[] = [
       { index: true, element: <DashboardPage /> },
       { path: 'ledger', element: <LedgerPage /> },
       { path: 'txn/:id', element: <TransactionDetailPage /> },
+      { path: 'txn/:id/edit', element: <TransactionEditPage /> },
       { path: 'reports', element: <PlaceholderPage screen="reports" phase="Phase 4" /> },
       { path: 'more', element: <MorePage /> },
       { path: 'new/in', element: <TransactionFormPage kind="in" /> },
       { path: 'new/out', element: <TransactionFormPage kind="out" /> },
       { path: 'new/transfer', element: <TransactionFormPage kind="transfer" /> },
+      { path: 'new/adjustment', element: admin(<AdjustmentFormPage />) },
       { path: 'admin/users', element: admin(<UsersPage />) },
       { path: 'admin/users/:id', element: admin(<UserFormPage />) },
       { path: 'admin/funds', element: admin(<FundsPage />) },
@@ -40,7 +45,7 @@ export const routes: RouteObject[] = [
       { path: 'admin/accounts', element: admin(<AccountsPage />) },
       { path: 'admin/categories', element: admin(<CategoriesPage />) },
       { path: 'admin/lookups', element: admin(<LookupsPage />) },
-      { path: 'admin/audit', element: admin(<PlaceholderPage screen="audit" phase="Phase 3" />) },
+      { path: 'admin/audit', element: admin(<AuditLogPage />) },
       { path: 'admin/settings', element: admin(<PlaceholderPage screen="settings" phase="Phase 4" />) },
       { path: '*', element: <NotFoundPage /> },
     ],

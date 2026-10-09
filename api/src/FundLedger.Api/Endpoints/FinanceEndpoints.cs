@@ -5,6 +5,7 @@ using FundLedger.Application.Lookups;
 using FundLedger.Domain.Ledger;
 using FundLedger.Domain.Lookups;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FundLedger.Api.Endpoints;
 
@@ -136,9 +137,44 @@ internal static class FinanceEndpoints
                     sort.Unwrap() ?? TxnSort.Newest, limit, cursor), h.RequestAborted).ConfigureAwait(false)))
             .WithName("ListTransactions").WithSummary("Ledger with search, filters, sort, totals and cursor paging.").ProducesProblem(404);
 
-        g.MapGet("/transactions/{id:guid}", async Task<Ok<TransactionDto>> (Guid id, LedgerService s, HttpContext h) =>
-                TypedResults.Ok(await s.GetAsync(id, h.RequestAborted).ConfigureAwait(false)))
-            .WithName("GetTransaction").ProducesProblem(404);
+        g.MapGet("/transactions/{id:guid}", async Task<Ok<TransactionDetail>> (Guid id, LedgerService s, HttpContext h) =>
+            {
+                var d = await s.GetAsync(id, h.RequestAborted).ConfigureAwait(false);
+                ETag(h, d.Transaction.Revision);
+                return TypedResults.Ok(d);
+            })
+            .WithName("GetTransaction").WithSummary("One entry, with what the caller may do with it. ETag is the revision.").ProducesProblem(404);
+
+        g.MapPut("/transactions/{id:guid}", async Task<Ok<TransactionResult>> (Guid id, UpdateTransactionRequest b, [FromHeader(Name = "If-Match")] string? ifMatch, LedgerService s, HttpContext h) =>
+            {
+                var r = await s.UpdateAsync(id, ParseRevision(ifMatch), b, h.RequestAborted).ConfigureAwait(false);
+                ETag(h, r.Transaction.Revision);
+                return TypedResults.Ok(r);
+            })
+            .Validate<UpdateTransactionRequest>().WithName("UpdateTransaction")
+            .WithSummary("Edit an entry. Needs If-Match with the revision being edited; Admin edits need a reason.")
+            .ProducesProblem(400).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409).ProducesProblem(412).ProducesProblem(428);
+
+        g.MapPost("/transactions/{id:guid}/cancel", async Task<Ok<TransactionResult>> (Guid id, CancelTransactionRequest b, [FromHeader(Name = "If-Match")] string? ifMatch, LedgerService s, HttpContext h) =>
+            {
+                var r = await s.CancelAsync(id, ParseRevision(ifMatch), b, h.RequestAborted).ConfigureAwait(false);
+                ETag(h, r.Transaction.Revision);
+                return TypedResults.Ok(r);
+            })
+            .Validate<CancelTransactionRequest>().WithName("CancelTransaction")
+            .WithSummary("Cancel an entry (Admin). It stays in history and leaves the balances.")
+            .ProducesProblem(400).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409).ProducesProblem(412).ProducesProblem(428);
+
+        g.MapGet("/transactions/{id:guid}/history", async Task<Ok<IReadOnlyList<HistoryEntry>>> (Guid id, LedgerService s, HttpContext h) =>
+                TypedResults.Ok(await s.HistoryAsync(id, h.RequestAborted).ConfigureAwait(false)))
+            .WithName("GetTransactionHistory").WithSummary("Who changed what, when and why (newest first).").ProducesProblem(404);
+
+        app.MapGroup("/api/v1").WithTags("Ledger").RequireAuthorization(Policies.Admin).AddEndpointFilter<TenantTransactionFilter>()
+            .MapPost("/transactions/adjustment", async Task<Results<Created<TransactionResult>, Ok<TransactionResult>>> (CreateAdjustmentRequest b, LedgerService s, HttpContext h) =>
+                Reply(await s.CreateAdjustmentAsync(b, h.RequestAborted).ConfigureAwait(false)))
+            .Validate<CreateAdjustmentRequest>().WithName("CreateAdjustment")
+            .WithSummary("Record a correction to an account balance (Admin only; reason required).")
+            .ProducesProblem(400).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
 
         g.MapGet("/dashboard", async Task<Ok<DashboardDto>> (Guid fundId, LedgerService s, HttpContext h) =>
                 TypedResults.Ok(await s.DashboardAsync(fundId, h.RequestAborted).ConfigureAwait(false)))
@@ -148,6 +184,12 @@ internal static class FinanceEndpoints
                 TypedResults.Ok(await s.AccountBalancesAsync(fundId, h.RequestAborted).ConfigureAwait(false)))
             .WithName("GetAccountBalances").WithSummary("Computed balance of every account within one fund.").ProducesProblem(404);
     }
+
+    private static void ETag(HttpContext h, int revision) => h.Response.Headers.ETag = $"\"{revision}\"";
+
+    /// <summary>Reads <c>If-Match: "3"</c> (quotes optional). Missing or malformed yields null, which the service answers with 428.</summary>
+    private static int? ParseRevision(string? ifMatch) =>
+        int.TryParse(ifMatch?.Trim().Trim('"'), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : null;
 
     /// <summary>201 for a new entry; 200 with the existing entry for an idempotent retry.</summary>
     private static Results<Created<TransactionResult>, Ok<TransactionResult>> Reply(TransactionResult r) =>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownLeft, ArrowRightLeft, ArrowUpRight, Landmark, Wallet } from 'lucide-react'
+import { ArrowDownLeft, ArrowRightLeft, ArrowUpRight, Landmark, Scale, Wallet } from 'lucide-react'
 import { useDashboard } from '../lib/api/hooks'
 import { useMe, useSelectedFund } from '../lib/auth/queries'
 import { formatRupees } from '../lib/format/money'
@@ -34,6 +34,7 @@ export function DashboardPage() {
     { show: p.moneyIn, to: '/new/in', label: t('actions.moneyIn'), icon: ArrowDownLeft, tone: 'text-in' },
     { show: p.moneyOut, to: '/new/out', label: t('actions.moneyOut'), icon: ArrowUpRight, tone: 'text-out' },
     { show: p.transfer, to: '/new/transfer', label: t('actions.transfer'), icon: ArrowRightLeft, tone: 'text-transfer' },
+    { show: p.adjust, to: '/new/adjustment', label: t('actions.adjustment'), icon: Scale, tone: 'text-adjust' },
   ].filter((a) => a.show && fund.status === 'ACTIVE')
 
   const d = dash.data

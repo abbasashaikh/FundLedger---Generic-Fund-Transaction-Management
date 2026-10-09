@@ -112,7 +112,7 @@ jobs:
           # Source maps are uploaded privately (Sentry, later) — never served publicly.
           find dist -name '*.map' -delete
       - name: Publish PWA to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

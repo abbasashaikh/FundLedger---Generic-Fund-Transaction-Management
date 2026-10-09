@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FundLedger.Application\FundLedger.Application.csproj" />
+    <ProjectReference Include="..\FundLedger.Domain\FundLedger.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Migration SQL is embedded so the deployed image carries exactly what was verified. -->
+    <EmbeddedResource Include="Persistence\Migrations\Sql\*.sql" LogicalName="FundLedger.Migrations.Sql.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FundLedger.Api.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,30 @@
+# Shared HTTPS edge for all FundLedger environments on the VPS.
+# Location on the VPS: /opt/fundledger/edge
+# Caddy obtains and renews TLS certificates automatically (Let's Encrypt).
+name: fundledger-edge
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file: .env                 # API_DOMAIN_STAGING, API_DOMAIN_PRODUCTION, ACME_EMAIL
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+networks:
+  edge:
+    name: fundledger_edge          # app stacks join this network
+
+volumes:
+  caddy_data:
+  caddy_config:

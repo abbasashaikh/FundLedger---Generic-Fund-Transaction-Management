@@ -336,7 +336,7 @@ Settings are stored in `settings(organization_id, key, value jsonb)` and validat
 | Pre-auth | `users`, `user_sessions` | Read only through `SECURITY DEFINER` functions owned by `fundledger_auth_definer` (BYPASSRLS, NOLOGIN) |
 
 How the API uses it:
-- **Session context:** the API sets `app.org_id`, `app.user_id` and `app.is_admin` on each connection (TRD TR-002).
+- **Session context:** the API sets `app.org_id`, `app.user_id` and `app.is_admin` at the start of each transaction, as transaction-local settings (TRD TR-002, ADR-0008).
 - **No context means no rows.** This was verified: a query without context returns 0 users.
 - **"Own transactions only" is enforced in the API, not RLS.** For Members without `can_view_all_txns`, the API applies a `created_by = me` filter. It isn't in RLS because Members still need to see other users' transactions as aggregate totals on the dashboard (decision Q-05: Members see all transactions by default).
 

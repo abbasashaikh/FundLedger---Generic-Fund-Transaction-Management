@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+/* Dark mode is class-based so the user can override the system setting (Design Brief §11). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens — docs/03-UI-UX-Design-Brief.md §3.1.
+   Transaction-type colours are RESERVED for money direction; never decorative.
+   Every type is also shown with a sign/glyph + icon + label (WCAG 1.4.1).
+   --------------------------------------------------------------------------- */
+:root {
+  --color-primary: #0f766e;
+  --color-primary-fg: #ffffff;
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-muted: #475569;
+  --color-in: #15803d;
+  --color-in-bg: #dcfce7;
+  --color-out: #b91c1c;
+  --color-out-bg: #fee2e2;
+  --color-transfer: #1d4ed8;
+  --color-transfer-bg: #dbeafe;
+  --color-adjust: #b45309;
+  --color-adjust-bg: #fef3c7;
+  --color-cancelled: #64748b;
+  --color-warning: #b45309;
+  --color-danger: #b91c1c;
+  --color-success: #15803d;
+  color-scheme: light;
+}
+
+.dark {
+  --color-primary: #2dd4bf;
+  --color-primary-fg: #042f2e;
+  --color-bg: #0b1220;
+  --color-surface: #111a2e;
+  --color-surface-muted: #1a2440;
+  --color-border: #26324d;
+  --color-text: #e5e7eb;
+  --color-text-muted: #94a3b8;
+  --color-in: #4ade80;
+  --color-in-bg: #052e16;
+  --color-out: #f87171;
+  --color-out-bg: #3b0a0a;
+  --color-transfer: #60a5fa;
+  --color-transfer-bg: #0b1e4a;
+  --color-adjust: #fbbf24;
+  --color-adjust-bg: #3a2604;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-success: #4ade80;
+  color-scheme: dark;
+}
+
+/* Expose tokens as Tailwind utilities: bg-surface, text-in, border-border, ... */
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-primary-fg: var(--color-primary-fg);
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-in: var(--color-in);
+  --color-in-bg: var(--color-in-bg);
+  --color-out: var(--color-out);
+  --color-out-bg: var(--color-out-bg);
+  --color-transfer: var(--color-transfer);
+  --color-transfer-bg: var(--color-transfer-bg);
+  --color-adjust: var(--color-adjust);
+  --color-adjust-bg: var(--color-adjust-bg);
+  --color-cancelled: var(--color-cancelled);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
+  --color-success: var(--color-success);
+
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+@layer base {
+  html {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 16px minimum on inputs: readable and stops iOS zoom-on-focus. */
+  input, select, textarea { font-size: 16px; }
+
+  /* Always-visible focus ring (Design Brief §8). */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+/* Amounts always align in columns. */
+.amount { font-variant-numeric: tabular-nums; }

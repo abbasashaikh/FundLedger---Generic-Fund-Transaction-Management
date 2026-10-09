@@ -1,0 +1,35 @@
+# One FundLedger environment (staging OR production) on the VPS.
+# Location: /opt/fundledger/<env>/  with this file + a .env created from .env.example.
+# IMAGE_TAG is set by deploy.sh; FL_ENV selects container names Caddy routes to.
+name: fundledger-${FL_ENV:?set FL_ENV}
+
+x-app: &app
+  image: ghcr.io/abbasashaikh/fundledger-api:${IMAGE_TAG:?set IMAGE_TAG}
+  restart: unless-stopped
+  env_file: .env
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [edge]
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+services:
+  api:
+    <<: *app
+    container_name: fundledger-${FL_ENV}-api
+    command: ["api"]
+    mem_limit: 512m
+
+  worker:
+    <<: *app
+    container_name: fundledger-${FL_ENV}-worker
+    command: ["worker"]
+    mem_limit: 384m
+
+networks:
+  edge:
+    external: true
+    name: fundledger_edge

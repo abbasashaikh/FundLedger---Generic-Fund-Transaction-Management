@@ -155,10 +155,10 @@ Versions MUST be pinned in lock files at project setup. The table states the maj
 
 **TR-001** — The API MUST connect as `fundledger_app`. That role is not the table owner and has no `BYPASSRLS`. Migrations run as `fundledger_owner`, from CI only.
 
-**TR-002** — On every pooled connection open, the API MUST set the session context: `app.org_id`, `app.user_id` and `app.is_admin`.
-- This is done with an EF Core `DbConnectionInterceptor` calling `set_config(..., false)`.
-- When a connection is returned to the pool, the context MUST be cleared. Npgsql's `DISCARD ALL` on reset already does this.
-- Unauthenticated requests run with an empty context, so they can see no tenant rows.
+**TR-002** — The tenant context (`app.org_id`, `app.user_id`, `app.is_admin`) MUST be set **per database transaction** with `set_config(..., is_local => true)`, through the EF Core `TenantTransactionInterceptor` ([ADR-0008](adr/ADR-0008-transaction-scoped-tenant-context.md)).
+- Session-level settings are forbidden, because Neon's PgBouncer runs in transaction mode and could hand a session's settings to another client.
+- All tenant data access runs inside a transaction: authenticated endpoints use `TenantTransactionFilter`, and jobs open explicit transactions.
+- Queries outside a transaction see no tenant rows (fail-closed).
 
 **TR-003** — Pre-authentication lookups (PIN login and refresh) MUST go through the `SECURITY DEFINER` functions `fl.auth_find_user_by_mobile` and `fl.auth_find_session`. RLS is never disabled for them.
 
@@ -682,6 +682,7 @@ Pipeline rules:
 | [ADR-0005](adr/ADR-0005-offline-sync-idempotency.md) | Offline outbox with client UUIDs and server idempotency | Accepted |
 | [ADR-0006](adr/ADR-0006-hosting.md) | Hosting: Neon + VPS (Docker/Caddy) + Cloudflare Pages/R2 | Accepted 07-Oct-2026 (domain pending) |
 | [ADR-0007](adr/ADR-0007-money-in-receipts.md) | Money In receipts (PDF + share) in V1 | Accepted 07-Oct-2026 |
+| [ADR-0008](adr/ADR-0008-transaction-scoped-tenant-context.md) | Tenant context set per transaction (PgBouncer-safe) | Accepted 07-Oct-2026 |
 
 ---
 

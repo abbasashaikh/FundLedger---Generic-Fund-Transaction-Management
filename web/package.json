@@ -1,0 +1,49 @@
+{
+  "name": "fundledger-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node node_modules/vite/bin/vite.js",
+    "build": "node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build && node scripts/write-headers.mjs",
+    "preview": "node node_modules/vite/bin/vite.js preview",
+    "lint": "node node_modules/oxlint/bin/oxlint --deny-warnings src",
+    "typecheck": "node node_modules/typescript/bin/tsc -b",
+    "test": "node node_modules/vitest/vitest.mjs run",
+    "test:watch": "node node_modules/vitest/vitest.mjs",
+    "gen:api": "node node_modules/openapi-typescript/bin/cli.js ../api/openapi/fundledger-api.json -o src/lib/api/schema.d.ts",
+    "check:api": "npm run gen:api && git diff --exit-code -- src/lib/api/schema.d.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.104.1",
+    "i18next": "^26.4.2",
+    "lucide-react": "^1.52.0",
+    "openapi-fetch": "^0.17.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-i18next": "^17.0.16",
+    "react-router": "^7.18.4",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
+    "oxlint": "^1.81.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9",
+    "vite": "^8.3.0",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

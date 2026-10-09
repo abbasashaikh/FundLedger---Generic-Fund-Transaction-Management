@@ -27,6 +27,12 @@ The first deployment is Ijtema fund management. The product itself is deliberate
 | — | [`database/schema.sql`](database/schema.sql) | PostgreSQL DDL (source of truth) |
 | — | [`database/verify_schema.sql`](database/verify_schema.sql) | Executable checks for balances, business rules and RLS |
 
+## Getting started
+
+See **[docs/development.md](docs/development.md)** for prerequisites, running the API and PWA locally, tests, and how to change the database or API contract.
+
+Deployment and environment setup: **[docs/ops/deployment.md](docs/ops/deployment.md)**. Neon database record: **[docs/ops/database-setup.md](docs/ops/database-setup.md)**.
+
 ## Verify the schema locally
 
 You need Docker. Run these commands from the repo root in Git Bash.
@@ -57,7 +63,7 @@ docker rm -f fl-pg
 
 ## Status
 
-Documentation baseline. Implementation starts with Phase 0 of the [Implementation Plan](docs/05-Implementation-Plan.md).
+**Phase 0 (foundation) is done** — see the Phase 0 section of the [Implementation Plan](docs/05-Implementation-Plan.md) for exactly what's in place and what's waiting on accounts/hosting. Next: Phase 1 (identity: users, mobile + PIN login, fund access).
 
 All product decisions were recorded on 07-Oct-2026 ([TRD §18](docs/01-TRD.md#18-product-owner-decisions-07-oct-2026)):
 - mobile + PIN login ([ADR-0002](docs/adr/ADR-0002-authentication.md))

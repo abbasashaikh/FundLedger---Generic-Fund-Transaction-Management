@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query'
+import { Link } from 'react-router'
+import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Search, SlidersHorizontal } from 'lucide-react'
 import { api, type Schemas } from '../../lib/api/client'
@@ -10,6 +11,10 @@ import { addDays, dayHeading, startOfMonth, startOfWeek, todayIso } from '../../
 import { formatRupees } from '../../lib/format/money'
 import { Badge, Button, ErrorBanner } from '../../components/ui'
 import { TxnRow } from '../../components/TxnRow'
+import { useSession } from '../../lib/auth/session'
+import { entryTitle, useOutbox } from '../../lib/offline/outbox'
+import { isNetworkError, loadLedgerCache, saveLedgerCache } from '../../lib/offline/refdata'
+import { formatDateTime } from '../../lib/format/date'
 
 type Preset = 'all' | 'today' | 'yesterday' | 'week' | 'month'
 
@@ -64,8 +69,22 @@ export function LedgerPage() {
       })),
   })
 
-  const pages = query.data?.pages ?? []
-  const items = pages.flatMap((p) => p.items)
+  const userId = useSession((s) => s.user?.id)
+  const pendingHere = useOutbox(userId).filter((i) => i.fundId === fund?.id)
+  const unfiltered = !q && preset === 'all' && !type && !status && !categoryId && !accountId && sort === 'NEWEST'
+
+  // Offline (TRD §8.2 `ledgerCache`): the last entries seen on this device, read-only and clearly labelled.
+  const offlineFailure = query.isError && isNetworkError(query.error)
+  const cache = useQuery({ queryKey: ['ledger-cache', userId, fund?.id], enabled: offlineFailure && !!userId && !!fund, staleTime: 0, queryFn: async () => (await loadLedgerCache(userId!, fund!.id)) ?? null })
+
+  const pages = useMemo(() => query.data?.pages ?? [], [query.data])
+  const fetched = useMemo(() => pages.flatMap((p) => p.items), [pages])
+  const cachedItems = cache.data?.items
+  const items = useMemo(() => (offlineFailure ? (cachedItems ?? []) : fetched), [offlineFailure, cachedItems, fetched])
+
+  useEffect(() => {
+    if (userId && fund && unfiltered && query.isSuccess && fetched.length > 0) void saveLedgerCache(userId, fund.id, fetched)
+  }, [userId, fund, unfiltered, query.isSuccess, fetched.length]) // eslint-disable-line react-hooks/exhaustive-deps
   const totals = pages[0]?.totals
   const groups = useMemo(() => {
     const map = new Map<string, Txn[]>()
@@ -123,7 +142,20 @@ export function LedgerPage() {
         </p>
       )}
 
-      <ErrorBanner message={query.error?.message} />
+      {offlineFailure && cache.data && <p role="status" className="rounded-md border border-warning bg-surface px-3 py-2 text-sm">{t('ledger.savedData', { when: formatDateTime(cache.data.savedAt) })}</p>}
+      {pendingHere.length > 0 && (
+        <section aria-label={t('ledger.pendingHeading')} className="grid gap-2">
+          <h2 className="text-sm font-semibold text-text-muted">{t('ledger.pendingHeading')}</h2>
+          {pendingHere.map((i) => (
+            <Link key={i.clientTxnId} to="/sync" className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-surface p-3 text-sm">
+              <span className="min-w-0 flex-1 truncate">{entryTitle(i)} · {i.command.purpose}</span>
+              <span className="amount font-semibold">{formatRupees(i.command.amount, { decimals: 'auto' })}</span>
+              <Badge tone={i.state === 'NEEDS_ATTENTION' ? 'danger' : 'warning'}>{t(`sync.state.${i.state}`)}</Badge>
+            </Link>
+          ))}
+        </section>
+      )}
+      <ErrorBanner message={offlineFailure && cache.data ? null : query.error?.message} />
       {query.isPending && <p className="text-text-muted">{t('app.loading')}</p>}
       {query.isSuccess && items.length === 0 && (
         <div className="py-12 text-center">

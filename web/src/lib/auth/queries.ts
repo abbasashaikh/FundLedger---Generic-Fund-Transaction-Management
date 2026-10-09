@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { api, type Schemas } from '../api/client'
 import { unwrap } from '../api/errors'
 import { useSession } from './session'
+import { cached } from '../offline/refdata'
 
 export type Me = Schemas['MeResponse']
 export type AccessibleFund = Schemas['AccessibleFund']
@@ -14,7 +15,7 @@ export function useMe() {
   return useQuery({
     queryKey: ['me', userId],
     enabled: status === 'authenticated',
-    queryFn: async () => unwrap(await api.GET('/api/v1/me')),
+    queryFn: () => cached(userId, 'me', async () => unwrap(await api.GET('/api/v1/me'))),
   })
 }
 

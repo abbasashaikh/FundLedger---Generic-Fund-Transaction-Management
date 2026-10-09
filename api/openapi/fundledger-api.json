@@ -3299,6 +3299,71 @@
           }
         }
       }
+    },
+    "/api/v1/sync/transactions": {
+      "post": {
+        "tags": [
+          "Sync"
+        ],
+        "summary": "Record up to 50 entries queued on the device. Each gets CREATED, DUPLICATE, REJECTED or RETRY.",
+        "operationId": "SyncTransactions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync/discard": {
+      "post": {
+        "tags": [
+          "Sync"
+        ],
+        "summary": "Records that a rejected offline entry was discarded on the device.",
+        "operationId": "DiscardOfflineEntry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4188,6 +4253,26 @@
         },
         "additionalProperties": false
       },
+      "DiscardRequest": {
+        "required": [
+          "clientTxnId",
+          "summary"
+        ],
+        "type": "object",
+        "properties": {
+          "clientTxnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "ExportJobDto": {
         "required": [
           "id",
@@ -4680,6 +4765,23 @@
         },
         "additionalProperties": false
       },
+      "OfflineSettings": {
+        "required": [
+          "enabled",
+          "maxQueueAgeHours"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "maxQueueAgeHours": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "OpeningBalanceDto": {
         "required": [
           "accountId",
@@ -4743,7 +4845,8 @@
           "currencyCode",
           "timezone",
           "dateFormat",
-          "receiptsEnabled"
+          "receiptsEnabled",
+          "offlineEnabled"
         ],
         "type": "object",
         "properties": {
@@ -4767,6 +4870,9 @@
             "type": "string"
           },
           "receiptsEnabled": {
+            "type": "boolean"
+          },
+          "offlineEnabled": {
             "type": "boolean"
           }
         },
@@ -5300,7 +5406,8 @@
           "organization",
           "transactions",
           "auth",
-          "receipts"
+          "receipts",
+          "offline"
         ],
         "type": "object",
         "properties": {
@@ -5315,6 +5422,9 @@
           },
           "receipts": {
             "$ref": "#/components/schemas/ReceiptSettings"
+          },
+          "offline": {
+            "$ref": "#/components/schemas/OfflineSettings"
           }
         },
         "additionalProperties": false
@@ -5334,6 +5444,211 @@
               "null",
               "string"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SyncCommand": {
+        "required": [
+          "clientTxnId",
+          "type",
+          "clientCreatedAt",
+          "fundId",
+          "amount",
+          "txnDate",
+          "txnTime",
+          "categoryId",
+          "accountId",
+          "fromAccountId",
+          "toAccountId",
+          "paymentModeId",
+          "receivedFrom",
+          "paidTo",
+          "purpose",
+          "referenceNumber",
+          "remarks"
+        ],
+        "type": "object",
+        "properties": {
+          "clientTxnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TxnType"
+          },
+          "clientCreatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "txnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "txnTime": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "fromAccountId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "toAccountId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "paymentModeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "receivedFrom": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "paidTo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "referenceNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "remarks": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SyncItemResult": {
+        "required": [
+          "clientTxnId",
+          "result",
+          "transaction",
+          "errorCode",
+          "message",
+          "fieldErrors"
+        ],
+        "type": "object",
+        "properties": {
+          "clientTxnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "result": {
+            "$ref": "#/components/schemas/SyncOutcome"
+          },
+          "transaction": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TransactionDto"
+              }
+            ]
+          },
+          "errorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fieldErrors": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "SyncOutcome": {
+        "enum": [
+          "CREATED",
+          "DUPLICATE",
+          "REJECTED",
+          "RETRY"
+        ]
+      },
+      "SyncRequest": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncCommand"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "SyncResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncItemResult"
+            }
           }
         },
         "additionalProperties": false
@@ -6145,6 +6460,9 @@
     },
     {
       "name": "Settings"
+    },
+    {
+      "name": "Sync"
     }
   ]
 }

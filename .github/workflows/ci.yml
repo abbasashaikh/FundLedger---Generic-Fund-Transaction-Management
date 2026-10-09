@@ -25,7 +25,7 @@ jobs:
       DOTNET_NOLOGO: "1"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: api/global.json
       - run: dotnet tool restore
@@ -64,7 +64,7 @@ jobs:
       DOTNET_NOLOGO: "1"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: api/global.json
       - name: Create two empty databases

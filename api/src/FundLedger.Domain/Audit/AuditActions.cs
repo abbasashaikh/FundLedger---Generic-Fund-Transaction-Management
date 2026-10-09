@@ -40,6 +40,8 @@ public static class AuditActions
     public const string SettingsChanged = "SETTINGS_CHANGED";
     public const string ExportPerformed = "EXPORT_PERFORMED";
     public const string ReceiptGenerated = "RECEIPT_GENERATED";
+    public const string OfflineEntryStale = "OFFLINE_ENTRY_STALE";
+    public const string OfflineEntryDiscarded = "OFFLINE_ENTRY_DISCARDED";
 }
 
 public static class AuditEntities

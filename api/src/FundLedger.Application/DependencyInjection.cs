@@ -9,6 +9,7 @@ using FundLedger.Application.Lookups;
 using FundLedger.Application.Profile;
 using FundLedger.Application.Reports;
 using FundLedger.Application.Settings;
+using FundLedger.Application.Sync;
 using FundLedger.Application.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<ReceiptService>();
         services.AddScoped<ExportService>();
         services.AddScoped<SettingsService>();
+        services.AddScoped<SyncService>();
         services.AddSingleton<ReceiptRateLimiter>();
         services.AddScoped<BootstrapService>();
         services.AddValidatorsFromAssemblyContaining<CreateUserRequestValidator>(ServiceLifetime.Singleton);

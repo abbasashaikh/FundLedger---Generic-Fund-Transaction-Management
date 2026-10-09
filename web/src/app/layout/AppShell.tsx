@@ -3,11 +3,12 @@ import { NavLink, Outlet } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowDownLeft, ArrowRightLeft, ArrowUpRight, BarChart3, BookOpen, Building2, ClipboardList,
-  Cog, FolderKanban, Home, List, MoreHorizontal, Plus, Tags, Users, Wallet, CheckCircle2,
+  Cog, FolderKanban, Home, List, MoreHorizontal, Plus, Tags, Users, Wallet,
 } from 'lucide-react'
 import { QuickActionSheet } from './QuickActionSheet'
 import { UpdatePrompt } from '../../pwa/UpdatePrompt'
 import { OfflineBanner } from '../../pwa/OfflineBanner'
+import { SyncController, SyncIndicator } from '../../pwa/SyncIndicator'
 import { FundSwitcher } from './FundSwitcher'
 import { Toaster } from '../../components/toast'
 import { useSession } from '../../lib/auth/session'
@@ -74,10 +75,8 @@ export function AppShell() {
             <QuickLink to="/new/out" icon={ArrowUpRight} label={t('actions.moneyOut')} tone="text-out" />
             <QuickLink to="/new/transfer" icon={ArrowRightLeft} label={t('actions.transfer')} tone="text-transfer" />
           </div>
-          <span className="ml-auto flex min-h-11 items-center gap-1 text-sm text-text-muted lg:ml-2" title={t('sync.allSynced')}>
-            <CheckCircle2 aria-hidden className="size-5 text-success" />
-            <span className="sr-only">{t('sync.allSynced')}</span>
-          </span>
+          <SyncIndicator />
+          <SyncController />
         </header>
 
         <OfflineBanner />

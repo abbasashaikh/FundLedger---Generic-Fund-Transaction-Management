@@ -46,7 +46,7 @@ public sealed class AuditService(IFundLedgerDb db, ICurrentUser caller, IAuditRe
         ["USERS"] = [AuditActions.UserCreated, AuditActions.UserUpdated, AuditActions.UserActivated, AuditActions.UserDeactivated, AuditActions.FundAccessChanged],
         ["FUNDS"] = [AuditActions.FundCreated, AuditActions.FundUpdated, AuditActions.FundActivated, AuditActions.FundClosed, AuditActions.FundReopened, AuditActions.FundArchived, AuditActions.OpeningBalanceChanged],
         ["MASTER"] = [AuditActions.AccountCreated, AuditActions.AccountUpdated, AuditActions.CategoryCreated, AuditActions.CategoryUpdated, AuditActions.LookupChanged],
-        ["TRANSACTIONS"] = [AuditActions.TxnCreated, AuditActions.TxnUpdated, AuditActions.TxnCancelled, AuditActions.ReceiptGenerated],
+        ["TRANSACTIONS"] = [AuditActions.TxnCreated, AuditActions.TxnUpdated, AuditActions.TxnCancelled, AuditActions.ReceiptGenerated, AuditActions.OfflineEntryStale, AuditActions.OfflineEntryDiscarded],
         ["SYSTEM"] = [AuditActions.OrganizationCreated, AuditActions.AuditExported, AuditActions.SettingsChanged, AuditActions.ExportPerformed],
     };
 

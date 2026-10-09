@@ -18,12 +18,14 @@ public sealed record AuthSettings(int PinMaxFailures, int PinLockoutMinutes, int
 
 public sealed record ReceiptSettings(bool Enabled, string FooterText, bool ShowRecordedBy);
 
+public sealed record OfflineSettings(bool Enabled, int MaxQueueAgeHours);
+
 /// <summary>
 /// The Settings screen (App Flow §5.5, S26). Only settings the app already acts on are listed; attachment and
 /// offline settings join in their phases. Currency (INR) and the numbering period (Indian FY, decision Q-08)
 /// are fixed in V1 and therefore read-only.
 /// </summary>
-public sealed record SettingsDto(OrganizationProfile Organization, TransactionSettings Transactions, AuthSettings Auth, ReceiptSettings Receipts);
+public sealed record SettingsDto(OrganizationProfile Organization, TransactionSettings Transactions, AuthSettings Auth, ReceiptSettings Receipts, OfflineSettings Offline);
 
 public sealed class SettingsDtoValidator : AbstractValidator<SettingsDto>
 {
@@ -53,6 +55,9 @@ public sealed class SettingsDtoValidator : AbstractValidator<SettingsDto>
 
         RuleFor(x => x.Receipts).NotNull();
         RuleFor(x => x.Receipts.FooterText).NotNull().MaximumLength(200).When(x => x.Receipts is not null);
+
+        RuleFor(x => x.Offline).NotNull();
+        RuleFor(x => x.Offline.MaxQueueAgeHours).InclusiveBetween(1, 720).When(x => x.Offline is not null);
     }
 
     private static bool BeKnownZone(string? id)
@@ -90,7 +95,8 @@ public sealed class SettingsService(IFundLedgerDb db, ICurrentUser caller, ISett
             new OrganizationProfile(org.Name, org.ContactMobile, org.ContactEmail, org.Address, org.RegistrationNumber, org.CurrencyCode, org.Timezone, org.DateFormat),
             new TransactionSettings(s.EditWindowMinutes, s.BackdateDaysMember, s.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)),
             new AuthSettings(s.PinMaxFailures, s.PinLockoutMinutes, s.SessionIdleMinutes, s.SessionAbsoluteDays),
-            new ReceiptSettings(s.ReceiptEnabled, s.ReceiptFooterText, s.ReceiptShowRecordedBy));
+            new ReceiptSettings(s.ReceiptEnabled, s.ReceiptFooterText, s.ReceiptShowRecordedBy),
+            new OfflineSettings(s.OfflineEnabled, s.OfflineMaxQueueAgeHours));
     }
 
     public async Task<SettingsDto> SaveAsync(SettingsDto next, CancellationToken ct)
@@ -144,6 +150,8 @@ public sealed class SettingsService(IFundLedgerDb db, ICurrentUser caller, ISett
             ("receipt.enabled", before.Receipts.Enabled, next.Receipts.Enabled),
             ("receipt.footer_text", before.Receipts.FooterText, next.Receipts.FooterText.Trim()),
             ("receipt.show_recorded_by", before.Receipts.ShowRecordedBy, next.Receipts.ShowRecordedBy),
+            ("offline.enabled", before.Offline.Enabled, next.Offline.Enabled),
+            ("offline.max_queue_age_hours", before.Offline.MaxQueueAgeHours, next.Offline.MaxQueueAgeHours),
         };
 
         var now = clock.GetUtcNow();

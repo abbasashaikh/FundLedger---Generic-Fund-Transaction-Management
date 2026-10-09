@@ -17,6 +17,7 @@ import { SettingsPage } from '../pages/admin/SettingsPage'
 import { ReportsHubPage } from '../pages/reports/ReportsHubPage'
 import { ReportViewerPage } from '../pages/reports/ReportViewerPage'
 import { ExportsPage } from '../pages/reports/ExportsPage'
+import { SyncPage } from '../pages/sync/SyncPage'
 import { TransactionFormPage } from '../pages/money/TransactionFormPage'
 import { FundsPage } from '../pages/admin/FundsPage'
 import { FundFormPage } from '../pages/admin/FundFormPage'
@@ -39,6 +40,7 @@ export const routes: RouteObject[] = [
       { path: 'reports/exports', element: <ExportsPage /> },
       { path: 'reports/:code', element: <ReportViewerPage /> },
       { path: 'more', element: <MorePage /> },
+      { path: 'sync', element: <SyncPage /> },
       { path: 'new/in', element: <TransactionFormPage kind="in" /> },
       { path: 'new/out', element: <TransactionFormPage kind="out" /> },
       { path: 'new/transfer', element: <TransactionFormPage kind="transfer" /> },

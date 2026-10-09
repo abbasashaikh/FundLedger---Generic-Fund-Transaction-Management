@@ -32,7 +32,7 @@ public sealed partial class LedgerService
             throw new ForbiddenException();
         }
 
-        return await CreateAsync(r.FundId, FundCapability.View, TxnType.Adjustment, r.Amount, r.TxnDate, r.TxnTime, r.ClientTxnId,
+        return await CreateAsync(r.FundId, FundCapability.View, TxnType.Adjustment, r.Amount, r.TxnDate, r.TxnTime, r.ClientTxnId, null,
             _ => RequireAccountAsync(r.AccountId, "accountId", ct),
             t =>
             {

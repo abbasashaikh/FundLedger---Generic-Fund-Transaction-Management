@@ -809,6 +809,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record up to 50 entries queued on the device. Each gets CREATED, DUPLICATE, REJECTED or RETRY. */
+        post: operations["SyncTransactions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Records that a rejected offline entry was discarded on the device. */
+        post: operations["DiscardOfflineEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1038,6 +1072,11 @@ export interface components {
             recent: components["schemas"]["TransactionDto"][];
             ownOnly: boolean;
         };
+        DiscardRequest: {
+            /** Format: uuid */
+            clientTxnId: string;
+            summary: null | string;
+        };
         ExportJobDto: {
             /** Format: uuid */
             id: string;
@@ -1169,6 +1208,11 @@ export interface components {
             id: string;
             name: string;
         };
+        OfflineSettings: {
+            enabled: boolean;
+            /** Format: int32 */
+            maxQueueAgeHours: number;
+        };
         OpeningBalanceDto: {
             /** Format: uuid */
             accountId: string;
@@ -1194,6 +1238,7 @@ export interface components {
             timezone: string;
             dateFormat: string;
             receiptsEnabled: boolean;
+            offlineEnabled: boolean;
         };
         OrganizationProfile: {
             name: string;
@@ -1332,10 +1377,58 @@ export interface components {
             transactions: components["schemas"]["TransactionSettings"];
             auth: components["schemas"]["AuthSettings"];
             receipts: components["schemas"]["ReceiptSettings"];
+            offline: components["schemas"]["OfflineSettings"];
         };
         SetUserStatusRequest: {
             status: components["schemas"]["UserStatus"];
             reason: null | string;
+        };
+        SyncCommand: {
+            /** Format: uuid */
+            clientTxnId: string;
+            type: components["schemas"]["TxnType"];
+            /** Format: date-time */
+            clientCreatedAt: string;
+            /** Format: uuid */
+            fundId: string;
+            amount: string;
+            /** Format: date */
+            txnDate: string;
+            txnTime: string;
+            /** Format: uuid */
+            categoryId: null | string;
+            /** Format: uuid */
+            accountId: null | string;
+            /** Format: uuid */
+            fromAccountId: null | string;
+            /** Format: uuid */
+            toAccountId: null | string;
+            /** Format: uuid */
+            paymentModeId: null | string;
+            receivedFrom: null | string;
+            paidTo: null | string;
+            purpose: string;
+            referenceNumber: null | string;
+            remarks: null | string;
+        };
+        SyncItemResult: {
+            /** Format: uuid */
+            clientTxnId: string;
+            result: components["schemas"]["SyncOutcome"];
+            transaction: null | components["schemas"]["TransactionDto"];
+            errorCode: null | string;
+            message: null | string;
+            fieldErrors: null | {
+                [key: string]: string[];
+            };
+        };
+        /** @enum {unknown} */
+        SyncOutcome: "CREATED" | "DUPLICATE" | "REJECTED" | "RETRY";
+        SyncRequest: {
+            items: components["schemas"]["SyncCommand"][];
+        };
+        SyncResponse: {
+            items: components["schemas"]["SyncItemResult"][];
         };
         TransactionDetail: {
             transaction: components["schemas"]["TransactionDto"];
@@ -3923,6 +4016,61 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
+            };
+        };
+    };
+    SyncTransactions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DiscardOfflineEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiscardRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

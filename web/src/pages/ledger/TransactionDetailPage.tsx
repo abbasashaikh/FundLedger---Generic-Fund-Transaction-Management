@@ -9,6 +9,7 @@ import { formatDate, formatDateTime, formatTime } from '../../lib/format/date'
 import { formatRupees } from '../../lib/format/money'
 import { useTransactionDetail } from '../../lib/api/hooks'
 import { useMe } from '../../lib/auth/queries'
+import { useOnline } from '../../pwa/useOnline'
 import { ReceiptButton } from '../../components/ReceiptButton'
 import { Badge, Button, Dialog, ErrorBanner } from '../../components/ui'
 import { Section, SignedAmount, TxnTypeBadge } from '../../components/ui/money'
@@ -32,6 +33,7 @@ export function TransactionDetailPage() {
   const navigate = useNavigate()
   const detail = useTransactionDetail(id)
   const me = useMe()
+  const online = useOnline()
   const [cancelOpen, setCancelOpen] = useState(false)
 
   if (detail.isPending) return <p className="text-text-muted">{t('app.loading')}</p>
@@ -85,10 +87,10 @@ export function TransactionDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           {x.type === 'DEPOSIT' && me.data?.organization.receiptsEnabled && <ReceiptButton id={x.id} mode="download" />}
           {canEdit && (
-            <Button variant="secondary" onClick={() => void navigate(`/txn/${x.id}/edit`)}><Pencil aria-hidden className="size-4" />{t('txn.edit')}</Button>
+            <Button variant="secondary" disabled={!online} title={online ? undefined : t('txn.needsInternet')} onClick={() => void navigate(`/txn/${x.id}/edit`)}><Pencil aria-hidden className="size-4" />{t('txn.edit')}</Button>
           )}
           {canCancel && (
-            <Button variant="secondary" onClick={() => setCancelOpen(true)}><Ban aria-hidden className="size-4" />{t('txn.cancelEntry')}</Button>
+            <Button variant="secondary" disabled={!online} title={online ? undefined : t('txn.needsInternet')} onClick={() => setCancelOpen(true)}><Ban aria-hidden className="size-4" />{t('txn.cancelEntry')}</Button>
           )}
           {canEdit && editableUntil && (
             <p className="text-xs text-text-muted">{t('txn.editableUntil', { when: formatDateTime(editableUntil) })}</p>

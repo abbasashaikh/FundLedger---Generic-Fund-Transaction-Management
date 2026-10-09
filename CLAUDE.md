@@ -47,5 +47,5 @@ Accepted ADRs are decisions. Do not reverse one silently: propose a new ADR that
 - Query-string enums must use `EnumQuery<T>` (`Hosting/EnumQuery.cs`), never a bare enum parameter: the default binder rejects `?type=EXPENSE`.
 - On the web, wrap `openapi-fetch` calls with `unwrap(await api.GET(...))`. It reads the already-parsed `error` body; re-reading the `Response` loses the server's message.
 - Never put a check that needs configuration in `Program.cs` before `Build()`/`Run()`: the build-time OpenAPI generator runs that code. Use a hosted service (`StartupChecks`). CI fails if the contract is empty.
-- `dotnet test` against Neon needs a temporary branch with an expiry (set a date well ahead). An expired branch makes every DB test fail at once.
+- `dotnet test` against Neon needs a temporary branch with an expiry (Neon allows at most about 7 days ahead on the current plan, so recreate it when it lapses). An expired branch makes every DB test fail at once with a password or "branch not found" error.
 - `dotnet test` uses Microsoft Testing Platform (`api/global.json`). DB tests skip without Docker unless `FUNDLEDGER_TEST_ADMIN_URL` is set.

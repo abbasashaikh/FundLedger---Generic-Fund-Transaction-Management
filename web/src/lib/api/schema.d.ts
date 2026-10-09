@@ -116,7 +116,7 @@ export interface paths {
         /** Funds the caller can open (Admins: all; Members: assigned Active/Closed). */
         get: operations["ListFunds"];
         put?: never;
-        post?: never;
+        post: operations["CreateFund"];
         delete?: never;
         options?: never;
         head?: never;
@@ -240,6 +240,367 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/funds/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All funds with type, status and balance (Admin). */
+        get: operations["ManageFunds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/funds/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetFund"];
+        put: operations["UpdateFund"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/funds/{id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ActivateFund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/funds/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a fund: no new transactions until reopened. */
+        post: operations["CloseFund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/funds/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReopenFund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/funds/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ArchiveFund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/funds/{id}/opening-balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetOpeningBalances"];
+        /** Set opening balances per account (Admin; a reason is required on an active fund). */
+        put: operations["SetOpeningBalances"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fund-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListFundTypes"];
+        put?: never;
+        post: operations["CreateFundType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-modes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListPaymentModes"];
+        put?: never;
+        post: operations["CreatePaymentMode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListAccounts"];
+        put?: never;
+        post: operations["CreateAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Categories for a direction and fund (org-wide plus fund-specific). */
+        get: operations["ListCategories"];
+        put?: never;
+        post: operations["CreateCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fund-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["UpdateFundType"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-modes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["UpdatePaymentMode"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["UpdateAccount"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["UpdateCategory"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/deposit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Money In. */
+        post: operations["CreateDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/expense": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Money Out. */
+        post: operations["CreateExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move money between two accounts of one fund. */
+        post: operations["CreateTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ledger with search, filters, sort, totals and cursor paging. */
+        get: operations["ListTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTransaction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Computed balance of every account within one fund. */
+        get: operations["GetAccountBalances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -252,19 +613,132 @@ export interface components {
             status: components["schemas"]["FundStatus"];
             permissions: components["schemas"]["FundPermissions"];
         };
+        AccountBalanceDto: {
+            /** Format: uuid */
+            accountId: string;
+            name: string;
+            kind: string;
+            opening: string;
+            moneyIn: string;
+            moneyOut: string;
+            transfersIn: string;
+            transfersOut: string;
+            adjustments: string;
+            closing: string;
+        };
+        AccountDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            kind: components["schemas"]["AccountKind"];
+            bankName: null | string;
+            accountNumberLast4: null | string;
+            isActive: boolean;
+            /** Format: int16 */
+            sortOrder: number;
+        };
+        /** @enum {unknown} */
+        AccountKind: "CASH" | "BANK" | "UPI" | "WALLET" | "OTHER";
+        /** @enum {unknown} */
+        AdjustmentDirection: "INCREASE" | "DECREASE" | null;
         AuthResponse: {
             accessToken: string;
             /** Format: int32 */
             expiresIn: number;
             user: components["schemas"]["SessionProfile"];
         };
+        /** @enum {unknown} */
+        CategoryDirection: "MONEY_IN" | "MONEY_OUT";
+        CategoryDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            fundId: null | string;
+            direction: components["schemas"]["CategoryDirection"];
+            name: string;
+            icon: null | string;
+            isActive: boolean;
+            /** Format: int16 */
+            sortOrder: number;
+        };
         ChangePinRequest: {
             currentPin: string;
             newPin: string;
         };
+        CreateCategoryRequest: {
+            direction: components["schemas"]["CategoryDirection"];
+            name: string;
+            icon: null | string;
+            /** Format: uuid */
+            fundId: null | string;
+            /**
+             * Format: int16
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        CreateDepositRequest: {
+            /** Format: uuid */
+            fundId: string;
+            amount: string;
+            /** Format: date */
+            txnDate: string;
+            txnTime: string;
+            /** Format: uuid */
+            categoryId: string;
+            /** Format: uuid */
+            accountId: string;
+            /** Format: uuid */
+            paymentModeId: string;
+            receivedFrom: null | string;
+            purpose: string;
+            referenceNumber: null | string;
+            remarks: null | string;
+            /** Format: uuid */
+            clientTxnId: null | string;
+        };
         CreatedUser: {
             user: components["schemas"]["UserDetail"];
             temporaryPin: string;
+        };
+        CreateExpenseRequest: {
+            /** Format: uuid */
+            fundId: string;
+            amount: string;
+            /** Format: date */
+            txnDate: string;
+            txnTime: string;
+            /** Format: uuid */
+            categoryId: string;
+            /** Format: uuid */
+            accountId: string;
+            /** Format: uuid */
+            paymentModeId: string;
+            paidTo: null | string;
+            purpose: string;
+            referenceNumber: null | string;
+            remarks: null | string;
+            /** Format: uuid */
+            clientTxnId: null | string;
+        };
+        CreateTransferRequest: {
+            /** Format: uuid */
+            fundId: string;
+            amount: string;
+            /** Format: date */
+            txnDate: string;
+            txnTime: string;
+            /** Format: uuid */
+            fromAccountId: string;
+            /** Format: uuid */
+            toAccountId: string;
+            /** Format: uuid */
+            paymentModeId: null | string;
+            purpose: string;
+            referenceNumber: null | string;
+            remarks: null | string;
+            /** Format: uuid */
+            clientTxnId: null | string;
         };
         CreateUserRequest: {
             fullName: string;
@@ -272,6 +746,20 @@ export interface components {
             email: null | string;
             role: components["schemas"]["UserRole"];
             fundAccess: null | components["schemas"]["FundAccessGrant"][];
+        };
+        DashboardDto: {
+            /** Format: uuid */
+            fundId: string;
+            fundName: string;
+            fundStatus: string;
+            balance: string;
+            moneyIn: string;
+            moneyOut: string;
+            todayIn: string;
+            todayOut: string;
+            accounts: components["schemas"]["AccountBalanceDto"][];
+            recent: components["schemas"]["TransactionDto"][];
+            ownOnly: boolean;
         };
         FundAccessGrant: {
             /** Format: uuid */
@@ -289,6 +777,11 @@ export interface components {
             /** @default true */
             canViewAllTxns: boolean;
         };
+        FundDetail: {
+            fund: components["schemas"]["FundSummary"];
+            hasTransactions: boolean;
+            openingBalances: components["schemas"]["OpeningBalanceDto"][];
+        };
         FundPermissions: {
             moneyIn: boolean;
             moneyOut: boolean;
@@ -298,8 +791,35 @@ export interface components {
             viewAllTransactions: boolean;
             adjust: boolean;
         };
+        FundReasonRequest: {
+            reason: null | string;
+        };
         /** @enum {unknown} */
         FundStatus: "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
+        FundSummary: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            name: string;
+            /** Format: uuid */
+            fundTypeId: string;
+            fundTypeName: string;
+            description: null | string;
+            /** Format: date */
+            startDate: null | string;
+            /** Format: date */
+            endDate: null | string;
+            status: components["schemas"]["FundStatus"];
+            closingBalance: string;
+        };
+        FundTypeDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            isActive: boolean;
+            /** Format: int16 */
+            sortOrder: number;
+        };
         HttpValidationProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -310,6 +830,11 @@ export interface components {
             errors?: {
                 [key: string]: string[];
             };
+        };
+        LedgerTotals: {
+            moneyIn: string;
+            moneyOut: string;
+            net: string;
         };
         LoginRequest: {
             mobile: string;
@@ -325,6 +850,27 @@ export interface components {
             organization: components["schemas"]["OrganizationInfo"];
             funds: components["schemas"]["AccessibleFund"][];
         };
+        NamedRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        OpeningBalanceDto: {
+            /** Format: uuid */
+            accountId: string;
+            accountName: string;
+            accountActive: boolean;
+            amount: string;
+            /** Format: date */
+            asOfDate: null | string;
+        };
+        OpeningBalanceItem: {
+            /** Format: uuid */
+            accountId: string;
+            amount: string;
+            /** Format: date */
+            asOfDate: string;
+        };
         OrganizationInfo: {
             /** Format: uuid */
             id: string;
@@ -333,6 +879,20 @@ export interface components {
             currencyCode: string;
             timezone: string;
             dateFormat: string;
+        };
+        PaymentModeDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            requiresReference: boolean;
+            isActive: boolean;
+            /** Format: int16 */
+            sortOrder: number;
+        };
+        PersonRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         PinResetResult: {
             temporaryPin: string;
@@ -352,6 +912,17 @@ export interface components {
         RevokeSessionsResponse: {
             /** Format: int32 */
             sessionsSignedOut: number;
+        };
+        SaveFundRequest: {
+            code: string;
+            name: string;
+            /** Format: uuid */
+            fundTypeId: string;
+            description: null | string;
+            /** Format: date */
+            startDate: null | string;
+            /** Format: date */
+            endDate: null | string;
         };
         SessionInfo: {
             /** Format: uuid */
@@ -378,9 +949,67 @@ export interface components {
         SetFundAccessRequest: {
             items: components["schemas"]["FundAccessGrant"][];
         };
+        SetOpeningBalancesRequest: {
+            items: components["schemas"]["OpeningBalanceItem"][];
+            reason: null | string;
+        };
         SetUserStatusRequest: {
             status: components["schemas"]["UserStatus"];
             reason: null | string;
+        };
+        TransactionDto: {
+            /** Format: uuid */
+            id: string;
+            txnNumber: string;
+            type: components["schemas"]["TxnType"];
+            status: components["schemas"]["TxnStatus"];
+            amount: string;
+            /** Format: uuid */
+            fundId: string;
+            /** Format: date */
+            txnDate: string;
+            txnTime: string;
+            category: null | components["schemas"]["NamedRef"];
+            account: null | components["schemas"]["NamedRef"];
+            fromAccount: null | components["schemas"]["NamedRef"];
+            toAccount: null | components["schemas"]["NamedRef"];
+            paymentMode: null | components["schemas"]["NamedRef"];
+            adjustmentDirection: null | components["schemas"]["AdjustmentDirection"];
+            receivedFrom: null | string;
+            paidTo: null | string;
+            purpose: null | string;
+            referenceNumber: null | string;
+            remarks: null | string;
+            createdBy: components["schemas"]["PersonRef"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int32 */
+            revision: number;
+            source: string;
+        };
+        TransactionPage: {
+            items: components["schemas"]["TransactionDto"][];
+            nextCursor: null | string;
+            totals: components["schemas"]["LedgerTotals"];
+            ownOnly: boolean;
+        };
+        TransactionResult: {
+            transaction: components["schemas"]["TransactionDto"];
+            fundClosingBalance: string;
+            duplicate: boolean;
+        };
+        /** @enum {unknown} */
+        TxnStatus: "ACTIVE" | "CANCELLED";
+        /** @enum {unknown} */
+        TxnType: "DEPOSIT" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT";
+        UpdateCategoryRequest: {
+            name: string;
+            icon: null | string;
+            /** Format: uuid */
+            fundId: null | string;
+            isActive: boolean;
+            /** Format: int16 */
+            sortOrder: number;
         };
         UpdateUserRequest: {
             fullName: string;
@@ -389,6 +1018,40 @@ export interface components {
             role: components["schemas"]["UserRole"];
             /** Format: uint32 */
             version: number;
+        };
+        UpsertAccountRequest: {
+            name: string;
+            kind: components["schemas"]["AccountKind"];
+            bankName: null | string;
+            accountNumberLast4: null | string;
+            /** @default true */
+            isActive: boolean;
+            /**
+             * Format: int16
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        UpsertFundTypeRequest: {
+            name: string;
+            /** @default true */
+            isActive: boolean;
+            /**
+             * Format: int16
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        UpsertPaymentModeRequest: {
+            name: string;
+            requiresReference: boolean;
+            /** @default true */
+            isActive: boolean;
+            /**
+             * Format: int16
+             * @default 0
+             */
+            sortOrder: number;
         };
         UserDetail: {
             /** Format: uuid */
@@ -633,6 +1296,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccessibleFund"][];
+                };
+            };
+        };
+    };
+    CreateFund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveFundRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -986,6 +1691,1139 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevokeSessionsResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ManageFunds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundSummary"][];
+                };
+            };
+        };
+    };
+    GetFund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateFund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveFundRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ActivateFund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CloseFund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FundReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReopenFund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FundReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveFund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetOpeningBalances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpeningBalanceDto"][];
+                };
+            };
+        };
+    };
+    SetOpeningBalances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOpeningBalancesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpeningBalanceDto"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListFundTypes: {
+        parameters: {
+            query?: {
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundTypeDto"][];
+                };
+            };
+        };
+    };
+    CreateFundType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertFundTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundTypeDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListPaymentModes: {
+        parameters: {
+            query?: {
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentModeDto"][];
+                };
+            };
+        };
+    };
+    CreatePaymentMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertPaymentModeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentModeDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListAccounts: {
+        parameters: {
+            query?: {
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDto"][];
+                };
+            };
+        };
+    };
+    CreateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListCategories: {
+        parameters: {
+            query?: {
+                direction?: string;
+                fundId?: string;
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDto"][];
+                };
+            };
+        };
+    };
+    CreateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateFundType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertFundTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundTypeDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdatePaymentMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertPaymentModeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentModeDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateDeposit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDepositRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExpenseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTransferRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListTransactions: {
+        parameters: {
+            query: {
+                fundId: string;
+                from?: string;
+                to?: string;
+                type?: string;
+                categoryId?: string;
+                accountId?: string;
+                userId?: string;
+                paymentModeId?: string;
+                status?: string;
+                q?: string;
+                sort?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionPage"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetTransaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetDashboard: {
+        parameters: {
+            query: {
+                fundId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAccountBalances: {
+        parameters: {
+            query: {
+                fundId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountBalanceDto"][];
                 };
             };
             /** @description Not Found */

@@ -1,4 +1,7 @@
+using FundLedger.Domain.Accounts;
 using FundLedger.Domain.Funds;
+using FundLedger.Domain.Ledger;
+using FundLedger.Domain.Lookups;
 using FundLedger.Domain.Organizations;
 using FundLedger.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +21,18 @@ public interface IFundLedgerDb
     DbSet<Fund> Funds { get; }
 
     DbSet<UserFundAccess> UserFundAccess { get; }
+
+    DbSet<FundType> FundTypes { get; }
+
+    DbSet<PaymentMode> PaymentModes { get; }
+
+    DbSet<Account> Accounts { get; }
+
+    DbSet<OpeningBalance> OpeningBalances { get; }
+
+    DbSet<Category> Categories { get; }
+
+    DbSet<Transaction> Transactions { get; }
 
     DatabaseFacade Database { get; }
 

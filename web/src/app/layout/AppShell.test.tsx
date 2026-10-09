@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -6,10 +6,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { routes } from '../router'
 import { useSession } from '../../lib/auth/session'
 import { adminUser, fakeApi, json, meFor, memberUser } from '../../test/fakeApi'
-
-vi.mock('virtual:pwa-register/react', () => ({
-  useRegisterSW: () => ({ needRefresh: [false, () => {}], offlineReady: [false, () => {}], updateServiceWorker: async () => {} }),
-}))
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
@@ -25,6 +21,11 @@ function signIn(user: typeof adminUser | typeof memberUser) {
   useSession.setState({ status: 'authenticated', accessToken: 'tok', user })
   return fakeApi({
     'GET /api/v1/me': () => json(200, meFor(user)),
+    'GET /api/v1/dashboard': () => json(200, {
+      fundId: 'f1', fundName: 'Ijtema 2026', fundStatus: 'ACTIVE', balance: '31400.00', moneyIn: '25000.00', moneyOut: '8500.00',
+      todayIn: '0.00', todayOut: '0.00', accounts: [], recent: [], ownOnly: false,
+    }),
+    'GET /api/v1/transactions/does-not-exist': () => json(404, { code: 'NOT_FOUND', title: 'Not found.' }),
     'GET /api/v1/version': () => json(200, { version: '1.0.0', commit: 'abcdef1234', environment: 'Testing' }),
   })
 }
@@ -53,8 +54,9 @@ describe('AppShell and route guards', () => {
     api = signIn(adminUser)
     renderAt('/')
     expect(screen.getByRole('button', { name: 'Add transaction' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
-    expect(await screen.findByText('Ijtema 2026')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+    expect(await screen.findByText('₹31,400.00')).toBeInTheDocument()
+    expect(await screen.findAllByText('Ijtema 2026')).not.toHaveLength(0)
     expect(screen.getAllByRole('link', { name: 'Users' }).length).toBeGreaterThan(0)
   })
 
@@ -65,10 +67,10 @@ describe('AppShell and route guards', () => {
     expect(screen.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument()
   })
 
-  it('shows a not-found page that does not reveal record existence', () => {
+  it('shows a not-found page that does not reveal record existence', async () => {
     api = signIn(adminUser)
     renderAt('/txn/does-not-exist')
-    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument()
     expect(screen.getByText(/doesn't exist or you don't have access/)).toBeInTheDocument()
   })
 

@@ -1,5 +1,8 @@
 using FundLedger.Application.Abstractions;
+using FundLedger.Domain.Accounts;
 using FundLedger.Domain.Funds;
+using FundLedger.Domain.Ledger;
+using FundLedger.Domain.Lookups;
 using FundLedger.Domain.Organizations;
 using FundLedger.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +27,18 @@ public sealed class FundLedgerDbContext(DbContextOptions<FundLedgerDbContext> op
     public DbSet<Fund> Funds => Set<Fund>();
 
     public DbSet<UserFundAccess> UserFundAccess => Set<UserFundAccess>();
+
+    public DbSet<FundType> FundTypes => Set<FundType>();
+
+    public DbSet<PaymentMode> PaymentModes => Set<PaymentMode>();
+
+    public DbSet<Account> Accounts => Set<Account>();
+
+    public DbSet<OpeningBalance> OpeningBalances => Set<OpeningBalance>();
+
+    public DbSet<Category> Categories => Set<Category>();
+
+    public DbSet<Transaction> Transactions => Set<Transaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

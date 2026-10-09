@@ -44,4 +44,8 @@ Accepted ADRs are decisions. Do not reverse one silently: propose a new ADR that
 
 - The local folder name contains `&`. npm scripts call tools via `node node_modules/...`; don't switch them to bare binaries or `npx`.
 - `api/openapi/fundledger-api.json` and `web/src/lib/api/schema.d.ts` are generated **and committed**. Regenerate both when the API surface changes.
+- Query-string enums must use `EnumQuery<T>` (`Hosting/EnumQuery.cs`), never a bare enum parameter: the default binder rejects `?type=EXPENSE`.
+- On the web, wrap `openapi-fetch` calls with `unwrap(await api.GET(...))`. It reads the already-parsed `error` body; re-reading the `Response` loses the server's message.
+- Never put a check that needs configuration in `Program.cs` before `Build()`/`Run()`: the build-time OpenAPI generator runs that code. Use a hosted service (`StartupChecks`). CI fails if the contract is empty.
+- `dotnet test` against Neon needs a temporary branch with an expiry (set a date well ahead). An expired branch makes every DB test fail at once.
 - `dotnet test` uses Microsoft Testing Platform (`api/global.json`). DB tests skip without Docker unless `FUNDLEDGER_TEST_ADMIN_URL` is set.

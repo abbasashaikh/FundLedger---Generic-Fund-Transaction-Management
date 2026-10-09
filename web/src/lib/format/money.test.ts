@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatIndian, formatRupees, formatSigned } from './money'
+import { formatIndian, formatRupees, formatSigned, compareAmounts, groupWhileTyping, sanitizeAmount, toWireAmount } from './money'
 
 describe('formatIndian', () => {
   it.each([
@@ -36,5 +36,39 @@ describe('formatRupees / formatSigned', () => {
     expect(formatSigned('EXPENSE', '8500.00')).toBe('− ₹8,500')
     expect(formatSigned('TRANSFER', '20000.00')).toBe('⇄ ₹20,000')
     expect(formatSigned('ADJUSTMENT', '100.00', 'DECREASE')).toBe('− ₹100')
+  })
+})
+
+describe('amount typing helpers', () => {
+  it('groups live in the Indian system', () => {
+    expect(groupWhileTyping('125000')).toBe('1,25,000')
+    expect(groupWhileTyping('125000.5')).toBe('1,25,000.5')
+    expect(groupWhileTyping('999')).toBe('999')
+    expect(groupWhileTyping('1000.')).toBe('1,000.')
+  })
+
+  it('sanitizes pasted text', () => {
+    expect(sanitizeAmount('₹1,25,000.567')).toBe('125000.56')
+    expect(sanitizeAmount('abc')).toBe('')
+    expect(sanitizeAmount('007')).toBe('7')
+    expect(sanitizeAmount('1.2.3')).toBe('1.23')
+  })
+
+  it('produces the wire format or null', () => {
+    expect(toWireAmount('25000')).toBe('25000.00')
+    expect(toWireAmount('25000.5')).toBe('25000.50')
+    expect(toWireAmount('0')).toBeNull()
+    expect(toWireAmount('')).toBeNull()
+    expect(toWireAmount('1.234')).toBeNull()
+  })
+})
+
+describe('compareAmounts', () => {
+  it('compares exactly, including negatives and different decimal lengths', () => {
+    expect(compareAmounts('1500.00', '1400.00')).toBe(1)
+    expect(compareAmounts('1400', '1400.00')).toBe(0)
+    expect(compareAmounts('-0.01', '0')).toBe(-1)
+    expect(compareAmounts('0.1', '0.10')).toBe(0)
+    expect(compareAmounts('9999999999999999.99', '9999999999999999.98')).toBe(1) // beyond float precision
   })
 })

@@ -8,6 +8,13 @@ import { LoginPage } from '../pages/auth/LoginPage'
 import { SetPinPage } from '../pages/auth/SetPinPage'
 import { UsersPage } from '../pages/admin/UsersPage'
 import { UserFormPage } from '../pages/admin/UserFormPage'
+import { DashboardPage } from '../pages/DashboardPage'
+import { LedgerPage } from '../pages/ledger/LedgerPage'
+import { TransactionDetailPage } from '../pages/ledger/TransactionDetailPage'
+import { TransactionFormPage } from '../pages/money/TransactionFormPage'
+import { FundsPage } from '../pages/admin/FundsPage'
+import { FundFormPage } from '../pages/admin/FundFormPage'
+import { AccountsPage, CategoriesPage, LookupsPage } from '../pages/admin/MasterPages'
 
 const admin = (element: React.ReactNode) => <RequireAdmin>{element}</RequireAdmin>
 
@@ -18,19 +25,21 @@ export const routes: RouteObject[] = [
   {
     element: <RequireAuth><AppShell /></RequireAuth>,
     children: [
-      { index: true, element: <PlaceholderPage screen="dashboard" phase="Phase 2" /> },
-      { path: 'ledger', element: <PlaceholderPage screen="ledger" phase="Phase 2" /> },
+      { index: true, element: <DashboardPage /> },
+      { path: 'ledger', element: <LedgerPage /> },
+      { path: 'txn/:id', element: <TransactionDetailPage /> },
       { path: 'reports', element: <PlaceholderPage screen="reports" phase="Phase 4" /> },
       { path: 'more', element: <MorePage /> },
-      { path: 'new/in', element: <PlaceholderPage screen="newIn" phase="Phase 2" /> },
-      { path: 'new/out', element: <PlaceholderPage screen="newOut" phase="Phase 2" /> },
-      { path: 'new/transfer', element: <PlaceholderPage screen="newTransfer" phase="Phase 2" /> },
+      { path: 'new/in', element: <TransactionFormPage kind="in" /> },
+      { path: 'new/out', element: <TransactionFormPage kind="out" /> },
+      { path: 'new/transfer', element: <TransactionFormPage kind="transfer" /> },
       { path: 'admin/users', element: admin(<UsersPage />) },
       { path: 'admin/users/:id', element: admin(<UserFormPage />) },
-      { path: 'admin/funds', element: admin(<PlaceholderPage screen="funds" phase="Phase 2" />) },
-      { path: 'admin/accounts', element: admin(<PlaceholderPage screen="accounts" phase="Phase 2" />) },
-      { path: 'admin/categories', element: admin(<PlaceholderPage screen="categories" phase="Phase 2" />) },
-      { path: 'admin/lookups', element: admin(<PlaceholderPage screen="lookups" phase="Phase 2" />) },
+      { path: 'admin/funds', element: admin(<FundsPage />) },
+      { path: 'admin/funds/:id', element: admin(<FundFormPage />) },
+      { path: 'admin/accounts', element: admin(<AccountsPage />) },
+      { path: 'admin/categories', element: admin(<CategoriesPage />) },
+      { path: 'admin/lookups', element: admin(<LookupsPage />) },
       { path: 'admin/audit', element: admin(<PlaceholderPage screen="audit" phase="Phase 3" />) },
       { path: 'admin/settings', element: admin(<PlaceholderPage screen="settings" phase="Phase 4" />) },
       { path: '*', element: <NotFoundPage /> },

@@ -26,6 +26,18 @@ export class ApiError extends Error {
 
 type Problem = { title?: string; code?: string; errors?: FieldErrors }
 
+function fromProblem(status: number, problem: Problem, headers: Headers): ApiError {
+  const retry = Number(headers.get('Retry-After'))
+  return new ApiError(
+    status,
+    problem.code ?? 'UNKNOWN',
+    problem.title ?? 'Something went wrong. Please try again.',
+    problem.errors ?? {},
+    Number.isFinite(retry) && retry > 0 ? retry : null,
+  )
+}
+
+/** From a raw fetch Response whose body has not been read yet (the auth calls). */
 export async function toApiError(response: Response): Promise<ApiError> {
   let problem: Problem = {}
   try {
@@ -34,18 +46,16 @@ export async function toApiError(response: Response): Promise<ApiError> {
     // not JSON — fall through to a generic message
   }
 
-  const retry = Number(response.headers.get('Retry-After'))
-  return new ApiError(
-    response.status,
-    problem.code ?? 'UNKNOWN',
-    problem.title ?? 'Something went wrong. Please try again.',
-    problem.errors ?? {},
-    Number.isFinite(retry) && retry > 0 ? retry : null,
-  )
+  return fromProblem(response.status, problem, response.headers)
 }
 
-/** Unwraps an openapi-fetch result, throwing ApiError on failure. */
-export async function unwrap<T>(result: { data?: T; error?: unknown; response: Response }): Promise<T> {
+/**
+ * Unwraps an openapi-fetch result, throwing ApiError on failure. openapi-fetch has ALREADY read the
+ * response body and exposes it as `error`, so it must be used here: re-reading the Response would fail
+ * and every server message (and field error) would be lost.
+ */
+export function unwrap<T>(result: { data?: T; error?: unknown; response: Response }): T {
   if (result.response.ok) return result.data as T
-  throw await toApiError(result.response)
+  const problem = result.error && typeof result.error === 'object' ? (result.error as Problem) : {}
+  throw fromProblem(result.response.status, problem, result.response.headers)
 }

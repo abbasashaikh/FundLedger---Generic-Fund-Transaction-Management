@@ -209,6 +209,54 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "Funds"
+        ],
+        "operationId": "CreateFund",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveFundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/users": {
@@ -704,6 +752,1565 @@
           }
         }
       }
+    },
+    "/api/v1/funds/manage": {
+      "get": {
+        "tags": [
+          "Funds"
+        ],
+        "summary": "All funds with type, status and balance (Admin).",
+        "operationId": "ManageFunds",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FundSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/funds/{id}": {
+      "get": {
+        "tags": [
+          "Funds"
+        ],
+        "operationId": "GetFund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Funds"
+        ],
+        "operationId": "UpdateFund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveFundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/funds/{id}/activate": {
+      "post": {
+        "tags": [
+          "Funds"
+        ],
+        "operationId": "ActivateFund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/funds/{id}/close": {
+      "post": {
+        "tags": [
+          "Funds"
+        ],
+        "summary": "Close a fund: no new transactions until reopened.",
+        "operationId": "CloseFund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FundReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/funds/{id}/reopen": {
+      "post": {
+        "tags": [
+          "Funds"
+        ],
+        "operationId": "ReopenFund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FundReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/funds/{id}/archive": {
+      "post": {
+        "tags": [
+          "Funds"
+        ],
+        "operationId": "ArchiveFund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/funds/{id}/opening-balances": {
+      "get": {
+        "tags": [
+          "Funds"
+        ],
+        "operationId": "GetOpeningBalances",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OpeningBalanceDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Funds"
+        ],
+        "summary": "Set opening balances per account (Admin; a reason is required on an active fund).",
+        "operationId": "SetOpeningBalances",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetOpeningBalancesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OpeningBalanceDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fund-types": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "ListFundTypes",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FundTypeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "CreateFundType",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertFundTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundTypeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payment-modes": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "ListPaymentModes",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentModeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "CreatePaymentMode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertPaymentModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentModeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/accounts": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "ListAccounts",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "CreateAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "summary": "Categories for a direction and fund (org-wide plus fund-specific).",
+        "operationId": "ListCategories",
+        "parameters": [
+          {
+            "name": "direction",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fundId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "CreateCategory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fund-types/{id}": {
+      "put": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "UpdateFundType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertFundTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundTypeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payment-modes/{id}": {
+      "put": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "UpdatePaymentMode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertPaymentModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentModeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/accounts/{id}": {
+      "put": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "UpdateAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "put": {
+        "tags": [
+          "Master data"
+        ],
+        "operationId": "UpdateCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions/deposit": {
+      "post": {
+        "tags": [
+          "Ledger"
+        ],
+        "summary": "Record Money In.",
+        "operationId": "CreateDeposit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDepositRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResult"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions/expense": {
+      "post": {
+        "tags": [
+          "Ledger"
+        ],
+        "summary": "Record Money Out.",
+        "operationId": "CreateExpense",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResult"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions/transfer": {
+      "post": {
+        "tags": [
+          "Ledger"
+        ],
+        "summary": "Move money between two accounts of one fund.",
+        "operationId": "CreateTransfer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResult"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions": {
+      "get": {
+        "tags": [
+          "Ledger"
+        ],
+        "summary": "Ledger with search, filters, sort, totals and cursor paging.",
+        "operationId": "ListTransactions",
+        "parameters": [
+          {
+            "name": "fundId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "paymentModeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions/{id}": {
+      "get": {
+        "tags": [
+          "Ledger"
+        ],
+        "operationId": "GetTransaction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "tags": [
+          "Ledger"
+        ],
+        "operationId": "GetDashboard",
+        "parameters": [
+          {
+            "name": "fundId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/accounts/balances": {
+      "get": {
+        "tags": [
+          "Ledger"
+        ],
+        "summary": "Computed balance of every account within one fund.",
+        "operationId": "GetAccountBalances",
+        "parameters": [
+          {
+            "name": "fundId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountBalanceDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -737,6 +2344,115 @@
         },
         "additionalProperties": false
       },
+      "AccountBalanceDto": {
+        "required": [
+          "accountId",
+          "name",
+          "kind",
+          "opening",
+          "moneyIn",
+          "moneyOut",
+          "transfersIn",
+          "transfersOut",
+          "adjustments",
+          "closing"
+        ],
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "opening": {
+            "type": "string"
+          },
+          "moneyIn": {
+            "type": "string"
+          },
+          "moneyOut": {
+            "type": "string"
+          },
+          "transfersIn": {
+            "type": "string"
+          },
+          "transfersOut": {
+            "type": "string"
+          },
+          "adjustments": {
+            "type": "string"
+          },
+          "closing": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountDto": {
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "bankName",
+          "accountNumberLast4",
+          "isActive",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AccountKind"
+          },
+          "bankName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "accountNumberLast4": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountKind": {
+        "enum": [
+          "CASH",
+          "BANK",
+          "UPI",
+          "WALLET",
+          "OTHER"
+        ]
+      },
+      "AdjustmentDirection": {
+        "enum": [
+          "INCREASE",
+          "DECREASE",
+          null
+        ]
+      },
       "AuthResponse": {
         "required": [
           "accessToken",
@@ -758,6 +2474,57 @@
         },
         "additionalProperties": false
       },
+      "CategoryDirection": {
+        "enum": [
+          "MONEY_IN",
+          "MONEY_OUT"
+        ]
+      },
+      "CategoryDto": {
+        "required": [
+          "id",
+          "fundId",
+          "direction",
+          "name",
+          "icon",
+          "isActive",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fundId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/CategoryDirection"
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16"
+          }
+        },
+        "additionalProperties": false
+      },
       "ChangePinRequest": {
         "required": [
           "currentPin",
@@ -774,6 +2541,116 @@
         },
         "additionalProperties": false
       },
+      "CreateCategoryRequest": {
+        "required": [
+          "direction",
+          "name",
+          "icon",
+          "fundId"
+        ],
+        "type": "object",
+        "properties": {
+          "direction": {
+            "$ref": "#/components/schemas/CategoryDirection"
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fundId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16",
+            "default": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateDepositRequest": {
+        "required": [
+          "fundId",
+          "amount",
+          "txnDate",
+          "txnTime",
+          "categoryId",
+          "accountId",
+          "paymentModeId",
+          "receivedFrom",
+          "purpose",
+          "referenceNumber",
+          "remarks",
+          "clientTxnId"
+        ],
+        "type": "object",
+        "properties": {
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "txnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "txnTime": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentModeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receivedFrom": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "referenceNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "remarks": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clientTxnId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreatedUser": {
         "required": [
           "user",
@@ -786,6 +2663,150 @@
           },
           "temporaryPin": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateExpenseRequest": {
+        "required": [
+          "fundId",
+          "amount",
+          "txnDate",
+          "txnTime",
+          "categoryId",
+          "accountId",
+          "paymentModeId",
+          "paidTo",
+          "purpose",
+          "referenceNumber",
+          "remarks",
+          "clientTxnId"
+        ],
+        "type": "object",
+        "properties": {
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "txnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "txnTime": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentModeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paidTo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "referenceNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "remarks": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clientTxnId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTransferRequest": {
+        "required": [
+          "fundId",
+          "amount",
+          "txnDate",
+          "txnTime",
+          "fromAccountId",
+          "toAccountId",
+          "paymentModeId",
+          "purpose",
+          "referenceNumber",
+          "remarks",
+          "clientTxnId"
+        ],
+        "type": "object",
+        "properties": {
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "txnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "txnTime": {
+            "type": "string"
+          },
+          "fromAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentModeId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "referenceNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "remarks": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clientTxnId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -827,6 +2848,65 @@
         },
         "additionalProperties": false
       },
+      "DashboardDto": {
+        "required": [
+          "fundId",
+          "fundName",
+          "fundStatus",
+          "balance",
+          "moneyIn",
+          "moneyOut",
+          "todayIn",
+          "todayOut",
+          "accounts",
+          "recent",
+          "ownOnly"
+        ],
+        "type": "object",
+        "properties": {
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fundName": {
+            "type": "string"
+          },
+          "fundStatus": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "string"
+          },
+          "moneyIn": {
+            "type": "string"
+          },
+          "moneyOut": {
+            "type": "string"
+          },
+          "todayIn": {
+            "type": "string"
+          },
+          "todayOut": {
+            "type": "string"
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountBalanceDto"
+            }
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionDto"
+            }
+          },
+          "ownOnly": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "FundAccessGrant": {
         "required": [
           "fundId"
@@ -860,6 +2940,29 @@
           "canViewAllTxns": {
             "type": "boolean",
             "default": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FundDetail": {
+        "required": [
+          "fund",
+          "hasTransactions",
+          "openingBalances"
+        ],
+        "type": "object",
+        "properties": {
+          "fund": {
+            "$ref": "#/components/schemas/FundSummary"
+          },
+          "hasTransactions": {
+            "type": "boolean"
+          },
+          "openingBalances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningBalanceDto"
+            }
           }
         },
         "additionalProperties": false
@@ -900,6 +3003,21 @@
         },
         "additionalProperties": false
       },
+      "FundReasonRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "FundStatus": {
         "enum": [
           "DRAFT",
@@ -907,6 +3025,93 @@
           "CLOSED",
           "ARCHIVED"
         ]
+      },
+      "FundSummary": {
+        "required": [
+          "id",
+          "code",
+          "name",
+          "fundTypeId",
+          "fundTypeName",
+          "description",
+          "startDate",
+          "endDate",
+          "status",
+          "closingBalance"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fundTypeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fundTypeName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "endDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FundStatus"
+          },
+          "closingBalance": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FundTypeDto": {
+        "required": [
+          "id",
+          "name",
+          "isActive",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16"
+          }
+        },
+        "additionalProperties": false
       },
       "HttpValidationProblemDetails": {
         "type": "object",
@@ -950,6 +3155,26 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      "LedgerTotals": {
+        "required": [
+          "moneyIn",
+          "moneyOut",
+          "net"
+        ],
+        "type": "object",
+        "properties": {
+          "moneyIn": {
+            "type": "string"
+          },
+          "moneyOut": {
+            "type": "string"
+          },
+          "net": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -1010,6 +3235,78 @@
         },
         "additionalProperties": false
       },
+      "NamedRef": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpeningBalanceDto": {
+        "required": [
+          "accountId",
+          "accountName",
+          "accountActive",
+          "amount",
+          "asOfDate"
+        ],
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountName": {
+            "type": "string"
+          },
+          "accountActive": {
+            "type": "boolean"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "asOfDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpeningBalanceItem": {
+        "required": [
+          "accountId",
+          "amount",
+          "asOfDate"
+        ],
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "asOfDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "additionalProperties": false
+      },
       "OrganizationInfo": {
         "required": [
           "id",
@@ -1038,6 +3335,53 @@
             "type": "string"
           },
           "dateFormat": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaymentModeDto": {
+        "required": [
+          "id",
+          "name",
+          "requiresReference",
+          "isActive",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requiresReference": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PersonRef": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
             "type": "string"
           }
         },
@@ -1117,6 +3461,50 @@
           "sessionsSignedOut": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SaveFundRequest": {
+        "required": [
+          "code",
+          "name",
+          "fundTypeId",
+          "description",
+          "startDate",
+          "endDate"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fundTypeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "endDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
           }
         },
         "additionalProperties": false
@@ -1215,6 +3603,28 @@
         },
         "additionalProperties": false
       },
+      "SetOpeningBalancesRequest": {
+        "required": [
+          "items",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningBalanceItem"
+            }
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "SetUserStatusRequest": {
         "required": [
           "status",
@@ -1230,6 +3640,268 @@
               "null",
               "string"
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransactionDto": {
+        "required": [
+          "id",
+          "txnNumber",
+          "type",
+          "status",
+          "amount",
+          "fundId",
+          "txnDate",
+          "txnTime",
+          "category",
+          "account",
+          "fromAccount",
+          "toAccount",
+          "paymentMode",
+          "adjustmentDirection",
+          "receivedFrom",
+          "paidTo",
+          "purpose",
+          "referenceNumber",
+          "remarks",
+          "createdBy",
+          "createdAt",
+          "revision",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "txnNumber": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TxnType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TxnStatus"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "fundId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "txnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "txnTime": {
+            "type": "string"
+          },
+          "category": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              }
+            ]
+          },
+          "account": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              }
+            ]
+          },
+          "fromAccount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              }
+            ]
+          },
+          "toAccount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              }
+            ]
+          },
+          "paymentMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NamedRef"
+              }
+            ]
+          },
+          "adjustmentDirection": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AdjustmentDirection"
+              }
+            ]
+          },
+          "receivedFrom": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "paidTo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purpose": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "referenceNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "remarks": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/PersonRef"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransactionPage": {
+        "required": [
+          "items",
+          "nextCursor",
+          "totals",
+          "ownOnly"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionDto"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "totals": {
+            "$ref": "#/components/schemas/LedgerTotals"
+          },
+          "ownOnly": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransactionResult": {
+        "required": [
+          "transaction",
+          "fundClosingBalance",
+          "duplicate"
+        ],
+        "type": "object",
+        "properties": {
+          "transaction": {
+            "$ref": "#/components/schemas/TransactionDto"
+          },
+          "fundClosingBalance": {
+            "type": "string"
+          },
+          "duplicate": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TxnStatus": {
+        "enum": [
+          "ACTIVE",
+          "CANCELLED"
+        ]
+      },
+      "TxnType": {
+        "enum": [
+          "DEPOSIT",
+          "EXPENSE",
+          "TRANSFER",
+          "ADJUSTMENT"
+        ]
+      },
+      "UpdateCategoryRequest": {
+        "required": [
+          "name",
+          "icon",
+          "fundId",
+          "isActive",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fundId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16"
           }
         },
         "additionalProperties": false
@@ -1262,6 +3934,91 @@
           "version": {
             "type": "integer",
             "format": "uint32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpsertAccountRequest": {
+        "required": [
+          "name",
+          "kind",
+          "bankName",
+          "accountNumberLast4"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AccountKind"
+          },
+          "bankName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "accountNumberLast4": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16",
+            "default": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpsertFundTypeRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16",
+            "default": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpsertPaymentModeRequest": {
+        "required": [
+          "name",
+          "requiresReference"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "requiresReference": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int16",
+            "default": 0
           }
         },
         "additionalProperties": false
@@ -1462,7 +4219,16 @@
       "name": "Profile"
     },
     {
+      "name": "Funds"
+    },
+    {
       "name": "Users"
+    },
+    {
+      "name": "Master data"
+    },
+    {
+      "name": "Ledger"
     }
   ]
 }

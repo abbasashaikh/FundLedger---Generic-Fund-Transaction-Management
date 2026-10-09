@@ -24,7 +24,7 @@ jobs:
       FUNDLEDGER_REQUIRE_DB_TESTS: "true"   # Testcontainers must run; never skip DB tests in CI
       DOTNET_NOLOGO: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: api/global.json
@@ -63,7 +63,7 @@ jobs:
       PGPASSWORD: ci
       DOTNET_NOLOGO: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: api/global.json
@@ -102,7 +102,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -125,7 +125,7 @@ jobs:
     name: Docker image builds and starts
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build image (not pushed)
         run: docker build --build-arg GIT_SHA="$GITHUB_SHA" -t fundledger-api:ci api
       - name: API container answers /health/live as non-root
@@ -153,7 +153,7 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2

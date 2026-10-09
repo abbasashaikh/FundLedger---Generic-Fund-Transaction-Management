@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import {
-  ArrowDownLeft, ArrowRightLeft, ArrowUpRight, BarChart3, BookOpen, Building2, ChevronDown, ClipboardList,
+  ArrowDownLeft, ArrowRightLeft, ArrowUpRight, BarChart3, BookOpen, Building2, ClipboardList,
   Cog, FolderKanban, Home, List, MoreHorizontal, Plus, Tags, Users, Wallet, CheckCircle2,
 } from 'lucide-react'
 import { QuickActionSheet } from './QuickActionSheet'
 import { UpdatePrompt } from '../../pwa/UpdatePrompt'
 import { OfflineBanner } from '../../pwa/OfflineBanner'
+import { FundSwitcher } from './FundSwitcher'
+import { useSession } from '../../lib/auth/session'
 
 // Layout per docs/02-App-Flow.md §2: bottom nav + centre (＋) on mobile,
 // left sidebar on desktop (≥1024px). Fund switcher and sync indicator are
@@ -15,6 +17,8 @@ import { OfflineBanner } from '../../pwa/OfflineBanner'
 export function AppShell() {
   const { t } = useTranslation()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const user = useSession((s) => s.user)
+  const isAdmin = user?.role === 'ADMIN'
 
   const main = [
     { to: '/', label: t('nav.home'), icon: Home, end: true },
@@ -45,17 +49,21 @@ export function AppShell() {
         </div>
         <nav className="flex flex-col gap-1 px-2">
           {main.map((item) => <SideLink key={item.to} {...item} />)}
-          <p className="mt-4 px-3 text-xs font-medium uppercase tracking-wide text-text-muted">{t('nav.administration')}</p>
-          {admin.map((item) => <SideLink key={item.to} {...item} />)}
+          {isAdmin && (
+            <>
+              <p className="mt-4 px-3 text-xs font-medium uppercase tracking-wide text-text-muted">{t('nav.administration')}</p>
+              {admin.map((item) => <SideLink key={item.to} {...item} />)}
+            </>
+          )}
+          <p className="mt-4 px-3 text-xs font-medium uppercase tracking-wide text-text-muted">{t('nav.account')}</p>
+          <SideLink to="/more" label={user?.fullName ?? t('nav.more')} icon={MoreHorizontal} />
         </nav>
       </aside>
 
       <div className="flex min-h-dvh flex-col">
         {/* Top bar: fund switcher, quick actions (desktop), sync status */}
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border bg-surface px-3">
-          <button type="button" className="flex min-h-11 items-center gap-1 rounded-md px-2 font-semibold hover:bg-surface-muted" aria-label={t('fund.switch')}>
-            {t('fund.noneSelected')} <ChevronDown aria-hidden className="size-4" />
-          </button>
+          <FundSwitcher />
           <div className="ml-auto hidden gap-2 lg:flex">
             <QuickLink to="/new/in" icon={ArrowDownLeft} label={t('actions.moneyIn')} tone="text-in" />
             <QuickLink to="/new/out" icon={ArrowUpRight} label={t('actions.moneyOut')} tone="text-out" />

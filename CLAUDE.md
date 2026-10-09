@@ -22,6 +22,7 @@ Accepted ADRs are decisions. Do not reverse one silently: propose a new ADR that
   - Never commit secrets. The repo is **public**.
   - Never put secrets or DB credentials in the PWA.
   - Never log PINs, tokens or full mobile numbers.
+  - Not even placeholder credentials: scanners (GitGuardian) flag any `user:password` pair in a connection string, real or not. Use no password at all, user-secrets, or a git-ignored `.env`.
 - **Schema changes:**
   - Every change is a new EF migration **and** the same change in `database/schema.sql`. CI fails on drift.
   - Never edit an applied migration.

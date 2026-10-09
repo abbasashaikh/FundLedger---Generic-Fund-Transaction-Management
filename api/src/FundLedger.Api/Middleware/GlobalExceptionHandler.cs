@@ -1,5 +1,8 @@
+using System.Globalization;
+using FundLedger.Application.Errors;
 using FundLedger.Domain;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace FundLedger.Api.Middleware;
@@ -24,8 +27,14 @@ internal sealed partial class GlobalExceptionHandler(
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
+        if (exception is DbUpdateException { InnerException: PostgresException inner })
+        {
+            exception = inner;   // surface DB trigger rules (SQLSTATE P0001) raised during SaveChanges
+        }
+
         var (status, code, title) = exception switch
         {
+            AppException a => (a.Status, a.Code, a.Message),
             DomainException d => (400, d.Code, d.Message),
             PostgresException { SqlState: "P0001" } pg when DatabaseRules.TryGetValue(pg.MessageText, out var rule)
                 => (rule.Status, pg.MessageText, rule.Title),
@@ -39,7 +48,18 @@ internal sealed partial class GlobalExceptionHandler(
         }
 
         httpContext.Response.StatusCode = status;
-        return await problemDetails.TryWriteAsync(new ProblemDetailsContext
+        if (exception is TooManyAttemptsException locked)
+        {
+            httpContext.Response.Headers.RetryAfter =
+                ((int)Math.Ceiling(locked.RetryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (exception is UnauthenticatedException)
+        {
+            httpContext.Response.Headers.WWWAuthenticate = "Bearer";
+        }
+
+        var context = new ProblemDetailsContext
         {
             HttpContext = httpContext,
             Exception = exception,
@@ -49,7 +69,13 @@ internal sealed partial class GlobalExceptionHandler(
                 Title = title,
                 Extensions = { ["code"] = code },
             },
-        }).ConfigureAwait(false);
+        };
+        if (exception is ValidationFailedException v)
+        {
+            context.ProblemDetails.Extensions["errors"] = v.Errors;
+        }
+
+        return await problemDetails.TryWriteAsync(context).ConfigureAwait(false);
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception for request {RequestId}")]

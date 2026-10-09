@@ -111,6 +111,25 @@ All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining d
 | P1-08 | Authorization framework: policies, `IFundAccessGuard`, **two-user IDOR test harness** used by every later endpoint | — | Template test |
 | P1-09 | Audit writer (`IAuditWriter`) + auth/user events | — | Unit |
 
+### Phase 1 status (07-Oct-2026)
+
+| ID | Status | Notes |
+|---|---|---|
+| P1-01 | ✅ | `bootstrap` operator command creates org + first Admin (temporary PIN printed once) + default lookups. The browser `/setup` wizard is deferred: a CLI is safer for a one-time action. |
+| P1-02 | ✅ | 50-user limit: API check and DB trigger; tested incl. inactive users not counting |
+| P1-03 | ✅ | `POST /auth/login`, `PasswordHasher`, timing equalisation, per-mobile lockout (also unknown numbers), weak-PIN rules, restricted session until PIN change |
+| P1-04 | ✅ | ES256 15-min JWT, rotating refresh cookie, theft detection with parallel-tab race window, logout/deactivation/reset revoke server-side, per-request session check |
+| P1-05 | ✅ | Per-IP login rate limit; PIN reset; session list/revoke |
+| P1-06 | ✅ | `GET /me`; PWA keeps access token in memory, single-flight cross-tab refresh |
+| P1-07 | ✅ | Users list + user form with fund-access grid and presets, deactivate, reset PIN, sessions |
+| P1-08 | ✅ | `FundAccessGuard` and the two-user IDOR test suite |
+| P1-09 | ✅ | Audit writer; auth and user events, with masked mobiles and no secrets |
+| P1-10 | n/a | OTP provider adapter dropped (PIN-only, ADR-0002) |
+
+**Verified:** 106 API tests (incl. DB tests on Neon via the pooler) and 26 web tests pass.
+**Found and fixed:** the baseline SQL's blanket function grant failed on a fresh non-superuser database (Neon); EF created a new internal service provider per request until the enum translator was shared.
+**Not yet done:** browser walkthrough of the new screens; production/staging need `Auth__Jwt__SigningKeyPem` (`generate-jwt-key`) before deploy.
+
 **Exit criteria (from PRD §29):**
 - An Admin-created active user can log in.
 - Inactive and unregistered users cannot log in.

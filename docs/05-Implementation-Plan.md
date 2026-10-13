@@ -344,6 +344,15 @@ The balance views read every active entry of the fund each time (ADR-0004 comput
 | P6-10 | Admin handover session (1 h) + user onboarding (15 min, one-page guide with screenshots in English, plus Hindi/Urdu if needed) | Guides in `docs/guides/` |
 | P6-11 | Hypercare: 2 weeks of daily Sentry/uptime/sync-rejection review; weekly check-in with the Admin | Issues triaged |
 
+### Phase 6 status (13-Oct-2026)
+
+All build phases (0–5 and 3b) are merged to `main`. What remains is mostly the owner's accounts and servers, in [ops/go-live-guide.md](ops/go-live-guide.md), then rehearsals and user testing that need a deployed staging.
+
+| ID | Status | Notes |
+|---|---|---|
+| Preparation | ✅ | Go-live guide with ten ordered steps; VPS env template completed (signing key, storage); Caddy upload limit raised to 22 MB for photos; the signing key can now be written on one line in an `.env` file (`generate-jwt-key` prints it that way, with a test) |
+| P6-01 … P6-11 | ⏸ | Waiting on staging: needs the owner's steps 1–10 |
+
 ---
 
 ## 9. Definition of Done (every story)

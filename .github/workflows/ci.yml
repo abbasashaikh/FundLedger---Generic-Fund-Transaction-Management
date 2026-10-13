@@ -131,7 +131,9 @@ jobs:
       - name: API container answers /health/live as non-root
         run: |
           # Throwaway signing key made by the image's own command (the API refuses to start without one).
-          KEY="$(docker run --rm fundledger-api:ci generate-jwt-key | sed -n '/BEGIN PRIVATE KEY/,/END PRIVATE KEY/p')"
+          # The command prints it as one Auth__Jwt__SigningKeyPem=... line (with 
+ between PEM lines): the form an .env file needs.
+          KEY="$(docker run --rm fundledger-api:ci generate-jwt-key | sed -n 's/^Auth__Jwt__SigningKeyPem=//p')"
           docker run -d --name api -p 8080:8080 \
             -e ConnectionStrings__FundLedger="Host=127.0.0.1;Database=x" \
             -e "Auth__Jwt__SigningKeyPem=$KEY" \

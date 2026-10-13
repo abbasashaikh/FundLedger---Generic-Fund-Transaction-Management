@@ -20,8 +20,13 @@ public sealed class ShiftableTimeProvider : TimeProvider
 }
 
 /// <summary>The real API over the test database, connected as the runtime (RLS) role.</summary>
-public sealed class ApiHost(PostgresFixture db, int loginPerIpLimit = 100_000) : WebApplicationFactory<Program>
+/// <param name="storage">"Local" (a throw-away folder) or "None" (attachments switched off).</param>
+public sealed class ApiHost(PostgresFixture db, int loginPerIpLimit = 100_000, string storage = "Local") : WebApplicationFactory<Program>
 {
+    private readonly string _files = Path.Combine(Path.GetTempPath(), "fundledger-test-" + Guid.NewGuid().ToString("N"));
+
+    public string FilesPath => _files;
+
     public ShiftableTimeProvider Clock { get; } = new();
 
     public PostgresFixture Db => db;
@@ -31,12 +36,23 @@ public sealed class ApiHost(PostgresFixture db, int loginPerIpLimit = 100_000) :
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:FundLedger", db.AppConnectionString);
         builder.UseSetting("RateLimiting:PermitsPerMinute", "100000");
+        builder.UseSetting("Storage:Provider", storage);
+        builder.UseSetting("Storage:LocalPath", _files);
         builder.UseSetting("RateLimiting:LoginPerIpPer15Min", loginPerIpLimit.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.ConfigureServices(s =>
         {
             s.RemoveAll<TimeProvider>();
             s.AddSingleton<TimeProvider>(Clock);
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing && Directory.Exists(_files))
+        {
+            Directory.Delete(_files, recursive: true);
+        }
     }
 
     public HttpClient Client() => CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
@@ -156,6 +172,22 @@ public sealed class Session(ApiHost host, HttpClient client)
     public Task<HttpResponseMessage> PutAsync(string path, object? body, int? ifMatch = null) => SendAsync(HttpMethod.Put, path, body, ifMatch);
 
     public Task<HttpResponseMessage> PatchAsync(string path, object? body) => SendAsync(HttpMethod.Patch, path, body);
+
+    /// <summary>Uploads one file as multipart form data (field "file"), the way the PWA does.</summary>
+    public async Task<HttpResponseMessage> UploadAsync(string path, string fileName, byte[] bytes, string contentType = "application/octet-stream")
+    {
+        using var form = new MultipartFormDataContent();
+        var part = new ByteArrayContent(bytes);
+        part.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        form.Add(part, "file", fileName);
+        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = form };
+        if (AccessToken is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
+        }
+
+        return await Http.SendAsync(request);
+    }
 
     public async Task<JsonElement> GetJsonAsync(string path)
     {

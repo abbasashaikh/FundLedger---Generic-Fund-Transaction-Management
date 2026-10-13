@@ -29,6 +29,8 @@ public sealed record OrganizationSettings
 
     public bool ReceiptShowRecordedBy { get; init; } = true;
 
+    public int AttachmentMaxMb { get; init; } = 5;
+
     public bool OfflineEnabled { get; init; } = true;
 
     public int OfflineMaxQueueAgeHours { get; init; } = 72;
@@ -52,6 +54,7 @@ public sealed record OrganizationSettings
             ReceiptEnabled = Bool(raw, "receipt.enabled", d.ReceiptEnabled),
             ReceiptFooterText = Str(raw, "receipt.footer_text", d.ReceiptFooterText, 200),
             ReceiptShowRecordedBy = Bool(raw, "receipt.show_recorded_by", d.ReceiptShowRecordedBy),
+            AttachmentMaxMb = Int(raw, "attachments.max_mb", d.AttachmentMaxMb, 1, 20),
             OfflineEnabled = Bool(raw, "offline.enabled", d.OfflineEnabled),
             OfflineMaxQueueAgeHours = Int(raw, "offline.max_queue_age_hours", d.OfflineMaxQueueAgeHours, 1, 720),
         };

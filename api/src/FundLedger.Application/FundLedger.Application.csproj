@@ -11,7 +11,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
-  <PropertyGroup>
-  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FundLedger.Api.IntegrationTests" />
+  </ItemGroup>
 
 </Project>

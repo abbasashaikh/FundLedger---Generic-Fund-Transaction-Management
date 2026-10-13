@@ -215,7 +215,7 @@ All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining d
 | P3-04 | ✅ | `GET /transactions/{id}/history`: Recorded / Edited / Cancelled with who, when, reason and old → new values by field name |
 | P3-05 | ✅ | `POST /transactions/adjustment` (Admin; reason ≥ 10 chars; increase or decrease one account). Adjustments are corrected by cancel + re-record, so the web has no edit form for them |
 | P3-06 | ✅ | `GET /audit-logs` (date range in org time, user, action group or action, fund, free text; paged) and `/audit-logs/export`. **Deviation:** the CSV is built synchronously and capped at 5,000 rows; bigger exports belong to the async export pipeline (TRD §10.2). Cells starting with `= + - @` are neutralised; the export itself is audited |
-| P3-07 | ⏸ | **Deferred to its own PR.** It needs the R2 bucket and credentials (an owner action) and a decision on the image re-encoding library and its licence |
+| P3-07 | ✅ | Built in Phase 3b (below). The image library decision is made: SkiaSharp (MIT). Works against a local folder now; the R2 bucket is an owner step ([attachments-storage.md](ops/attachments-storage.md)) |
 
 **Verified:** all API tests pass against Neon, including the new accountability suite (edit window, reason, 412/428, a race, cancel, adjustments, history, audit filters/paging/tenant scope, CSV injection, no DELETE routes). Web tests cover detail, edit with `If-Match`, cancel, the 412 message, the audit screen and the Admin-only routes. The edit → cancel → adjustment → audit flow was also driven in a browser against the staging Neon branch.
 
@@ -242,6 +242,16 @@ All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining d
 - A Money In receipt can be generated and shared from an Android phone, and a cancelled transaction's receipt shows the CANCELLED watermark.
 - An authorized export works.
 - An unauthorized export returns 403.
+
+### Phase 3b status — attachments (13-Oct-2026)
+
+| Item | Status | Notes |
+|---|---|---|
+| Upload / list / download / hide | ✅ | `POST /transactions/{id}/attachments`, `GET /transactions/{id}/attachments`, `GET /attachments/{id}` (302 to a 60-second link, or the bytes when the store has no direct links), `POST /attachments/{id}/hide` (Admin, reason, audited). Admin or the entry's recorder may add; visibility is exactly the entry's (404 otherwise); cancelled entries and closed funds refuse new files; 5 per entry |
+| Safety (TR-051) | ✅ | Type judged by magic bytes (JPEG, PNG, WebP, PDF); photos decoded and re-encoded with SkiaSharp (metadata incl. GPS removed, orientation applied, ≤ 2000 px, ≤ 40 megapixels); PDFs stored as uploaded; names sanitised; size limit is an organization setting (1–20 MB). Tests prove GPS text is gone from the stored bytes and a sideways photo comes out upright |
+| Storage | 🟡 | `Storage:Provider` = `S3` (R2 or any S3-compatible bucket, private, 60 s signed links; AWS SDK with the R2 checksum setting), `Local` (dev, tests) or none (uploads answer 503). **The S3 path is tested only up to the signed link: it has not been run against a real bucket**, because none exists yet |
+| Web | ✅ | Take photo / Choose file on Money In and Money Out (photos shrunk to 1600 px, JPEG 0.8 before upload, TR-052); files on the entry page with thumbnails, open, add more, Admin hide; settings group for the size limit. Verified in a browser against the API (a 3000 px PNG became a 97 KB JPEG, uploaded, thumbnail shown) |
+| Not done | ⏸ | Allowed types are fixed to the four in TR-050 (the setting for the list is not exposed). Antivirus is V1.1 as planned |
 
 ### Phase 4 status (09-Oct-2026)
 
@@ -293,7 +303,7 @@ All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining d
 | P5-02 | ✅ | Sync engine: runs on app start, when the connection returns, on "Sync now" and every 60 s while something waits; 50 per request, oldest first; exponential backoff 30 s → 15 min; rejected entries are never retried automatically; entries are bound to their user and never sent under another; one run at a time across tabs (Web Locks); a session that ended (401) keeps everything queued. Unit tests with fake time cover each rule |
 | P5-03 | ✅ | `POST /sync/transactions`: each entry in its own DB transaction through the same code as an online entry, so every rule is re-checked (TR-041). Results CREATED / DUPLICATE / REJECTED / RETRY. The race test sends the same 5-entry batch four times in parallel: exactly 5 entries, gap-free numbers, no errors. The device clock is kept as `client_created_at` for audit only (TR-042); entries older than the limit (`offline.max_queue_age_hours`, default 72) sync but are flagged `OFFLINE_ENTRY_STALE` (TR-043). `POST /sync/discard` records `OFFLINE_ENTRY_DISCARDED` |
 | P5-04 | 🟡 | Entry forms save to the outbox when offline or when the request can't get through (same client id both ways); top-bar indicator (offline / needs attention / N waiting / synced); the Waiting-to-sync screen with Edit & retry and a confirmed Discard; pending entries appear at the top of the ledger; edit and cancel are disabled offline with "Needs internet connection". **Deviation:** covered by Vitest component tests, not Playwright `setOffline` (no browser-automation project yet) |
-| P5-05 | ⏸ | Offline attachments need attachments (P3-07) first |
+| P5-05 | ✅ | Photos and PDFs chosen offline are kept on the device inside the queued entry (at most 3, TR-055) and uploaded after the entry is recorded; a file the server will never take is dropped with a note, a connection problem keeps it for later. Unit-tested; the fake IndexedDB used in tests drops file names, real browsers keep them |
 | P5-06 | ✅ | The service worker precaches the app shell only, with no runtime caching, so API answers are never served from its cache (ADR-0005). First-route JS is 161 KB gzip (target < 250 KB). Lighthouse is not run yet |
 | P5-07 | 🟡 | **Done:** an authorization-matrix test lists every public route and fails if a new one appears unannounced, checks that every other route refuses an anonymous caller (401) and every Admin route refuses a Member; security-header test; `npm audit` and `dotnet list package --vulnerable` clean; git history searched for credentials (only documentation placeholders). **Not done:** OWASP ZAP baseline (needs a deployed staging) |
 | P5-08 | ⏸ | Needs the VPS and an off-site storage account: nightly encrypted dump job and the first restore drill |

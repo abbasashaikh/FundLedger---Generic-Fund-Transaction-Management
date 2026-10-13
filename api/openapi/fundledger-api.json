@@ -3364,6 +3364,273 @@
           }
         }
       }
+    },
+    "/api/v1/transactions/{id}/attachments": {
+      "post": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Attach a photo or PDF to an entry (multipart, field \"file\"). Admin or the entry's own recorder.",
+        "operationId": "UploadAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "The files attached to an entry (hidden ones only for Admins).",
+        "operationId": "ListAttachments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AttachmentDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{id}": {
+      "get": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "The file, after checking access: a 302 to a 60-second link, or the bytes themselves.",
+        "operationId": "GetAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{id}/hide": {
+      "post": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Hide a file with a reason (Admin). It is kept, never deleted.",
+        "operationId": "HideAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HideAttachmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3505,6 +3772,65 @@
           "DECREASE",
           null
         ]
+      },
+      "AttachmentDto": {
+        "required": [
+          "id",
+          "fileName",
+          "contentType",
+          "sizeBytes",
+          "uploadedBy",
+          "uploadedAt",
+          "isHidden",
+          "hiddenReason"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "uploadedBy": {
+            "$ref": "#/components/schemas/PersonRef"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isHidden": {
+            "type": "boolean"
+          },
+          "hiddenReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttachmentSettings": {
+        "required": [
+          "maxMb"
+        ],
+        "type": "object",
+        "properties": {
+          "maxMb": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
       },
       "AuditItem": {
         "required": [
@@ -4578,6 +4904,18 @@
         },
         "additionalProperties": false
       },
+      "HideAttachmentRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "HistoryEntry": {
         "required": [
           "revision",
@@ -4670,6 +5008,10 @@
           }
         },
         "additionalProperties": false
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
       },
       "JsonElement": { },
       "LedgerTotals": {
@@ -4846,7 +5188,9 @@
           "timezone",
           "dateFormat",
           "receiptsEnabled",
-          "offlineEnabled"
+          "offlineEnabled",
+          "attachmentsEnabled",
+          "attachmentMaxMb"
         ],
         "type": "object",
         "properties": {
@@ -4874,6 +5218,13 @@
           },
           "offlineEnabled": {
             "type": "boolean"
+          },
+          "attachmentsEnabled": {
+            "type": "boolean"
+          },
+          "attachmentMaxMb": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -5407,7 +5758,8 @@
           "transactions",
           "auth",
           "receipts",
-          "offline"
+          "offline",
+          "attachments"
         ],
         "type": "object",
         "properties": {
@@ -5425,6 +5777,9 @@
           },
           "offline": {
             "$ref": "#/components/schemas/OfflineSettings"
+          },
+          "attachments": {
+            "$ref": "#/components/schemas/AttachmentSettings"
           }
         },
         "additionalProperties": false
@@ -6463,6 +6818,9 @@
     },
     {
       "name": "Sync"
+    },
+    {
+      "name": "Attachments"
     }
   ]
 }

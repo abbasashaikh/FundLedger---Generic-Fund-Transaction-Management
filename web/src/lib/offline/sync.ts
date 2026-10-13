@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { api } from '../api/client'
 import { ApiError } from '../api/errors'
 import { refresh, useSession } from '../auth/session'
+import { isPermanentUploadError, uploadAttachment } from '../api/attachments'
 import { offlineDb, type OutboxItem } from './db'
 import { isNetworkError } from './refdata'
 
@@ -77,10 +78,13 @@ async function run(force: boolean): Promise<SyncReport> {
   await offlineDb.outbox.where('userId').equals(userId).and((i) => i.state === 'SYNCING').modify({ state: 'PENDING' })
 
   const now = Date.now()
-  const due = (await offlineDb.outbox.where('userId').equals(userId).sortBy('createdAt')).filter((i) => i.state === 'PENDING' && (force || i.nextAttemptAt <= now))
-  if (due.length === 0) return empty('nothing')
+  const all = await offlineDb.outbox.where('userId').equals(userId).sortBy('createdAt')
+  const due = all.filter((i) => i.state === 'PENDING' && (force || i.nextAttemptAt <= now))
+  const filesDue = all.filter((i) => i.state === 'FILES' && (force || i.nextAttemptAt <= now))
+  if (due.length === 0 && filesDue.length === 0) return empty('nothing')
 
   const report = empty()
+  for (const item of filesDue) await sendFiles(item)
   for (let start = 0; start < due.length; start += BATCH) {
     const chunk = due.slice(start, start + BATCH)
     const outcome = await sendChunk(chunk)
@@ -140,8 +144,14 @@ async function sendChunk(chunk: OutboxItem[]): Promise<Chunk> {
     if (!queued) continue
     byId.delete(item.clientTxnId)
     if (item.result === 'CREATED' || item.result === 'DUPLICATE') {
-      await offlineDb.outbox.delete(queued.clientTxnId)
       synced++
+      if (queued.attachments?.length && item.transaction) {
+        // The entry is recorded. Its files go up next (TR-055); the item stays until they have.
+        await offlineDb.outbox.update(queued.clientTxnId, { state: 'FILES', serverTxnId: item.transaction.id, attempts: 0, nextAttemptAt: 0, lastError: undefined })
+        await sendFiles({ ...queued, state: 'FILES', serverTxnId: item.transaction.id })
+      } else {
+        await offlineDb.outbox.delete(queued.clientTxnId)
+      }
     } else if (item.result === 'REJECTED') {
       await offlineDb.outbox.update(queued.clientTxnId, {
         state: 'NEEDS_ATTENTION', lastError: { code: item.errorCode ?? 'REJECTED', message: item.message ?? "This entry can't be added.", fieldErrors: item.fieldErrors ?? null },
@@ -158,6 +168,35 @@ async function sendChunk(chunk: OutboxItem[]): Promise<Chunk> {
   // Anything the server did not answer for is simply due again next time.
   for (const left of byId.values()) await offlineDb.outbox.update(left.clientTxnId, { state: 'PENDING' })
   return { synced, rejected, retrying, stop: false }
+}
+
+/**
+ * Uploads the files that waited on the device for an entry that is now recorded. A file the server will never accept
+ * (too big, wrong type, entry closed, limit reached) is dropped with a note; a connection problem leaves it for later.
+ */
+async function sendFiles(item: OutboxItem): Promise<void> {
+  const files = [...(item.attachments ?? [])]
+  while (files.length > 0 && item.serverTxnId) {
+    const file = files[0]!
+    try {
+      await uploadAttachment(item.serverTxnId, file, file.name)
+      files.shift()
+    } catch (error) {
+      if (isPermanentUploadError(error)) {
+        files.shift()
+        await offlineDb.outbox.update(item.clientTxnId, { lastError: { code: 'FILE_REFUSED', message: `${file.name}: ${(error as ApiError).message}` } })
+        continue
+      }
+
+      await offlineDb.outbox.update(item.clientTxnId, {
+        attachments: files, state: 'FILES', attempts: item.attempts + 1, nextAttemptAt: Date.now() + backoffMs(item.attempts + 1),
+        lastError: { code: 'TRANSIENT', message: 'Photos will be uploaded when the connection is better.' },
+      })
+      return
+    }
+  }
+
+  await offlineDb.outbox.delete(item.clientTxnId)
 }
 
 /** Tells the audit log about entries the user discarded while offline (best effort; kept until it succeeds). */

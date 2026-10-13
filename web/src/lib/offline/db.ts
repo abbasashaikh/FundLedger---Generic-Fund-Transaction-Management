@@ -9,7 +9,8 @@ import type { Schemas } from '../api/client'
 //   discards     "I discarded this rejected entry" notices waiting to be sent to the audit log
 // No token, PIN or cookie is ever stored here.
 
-export type OutboxState = 'PENDING' | 'SYNCING' | 'NEEDS_ATTENTION'
+/** FILES: the entry is recorded on the server; its photos or PDFs are still waiting to be uploaded. */
+export type OutboxState = 'PENDING' | 'SYNCING' | 'NEEDS_ATTENTION' | 'FILES'
 
 export type SyncCommand = Schemas['SyncCommand']
 
@@ -31,6 +32,10 @@ export type OutboxItem = {
   /** Epoch ms before which an automatic retry waits (exponential backoff). */
   nextAttemptAt: number
   lastError?: OutboxError | undefined
+  /** Photos and PDFs kept on the device until the entry is recorded (TR-055: at most 3). */
+  attachments?: File[] | undefined
+  /** The server's id for the entry, once it is recorded (state FILES). */
+  serverTxnId?: string | undefined
 }
 
 export type RefRecord = { key: string; userId: string; value: unknown; savedAt: string }

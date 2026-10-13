@@ -441,6 +441,83 @@ namespace FundLedger.Infrastructure.Persistence.Migrations
                     b.ToTable("transactions", "fl");
                 });
 
+            modelBuilder.Entity("FundLedger.Domain.Ledger.TransactionAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<Guid?>("HiddenBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hidden_by");
+
+                    b.Property<string>("HiddenReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("hidden_reason");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_hidden");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("OriginalFilename")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("original_filename");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasColumnType("char(64)")
+                        .HasColumnName("sha256");
+
+                    b.Property<int>("SizeBytes")
+                        .HasColumnType("integer")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("storage_key");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transaction_id");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_transaction_attachments");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_transaction_attachments_storage_key");
+
+                    b.HasIndex("TransactionId")
+                        .HasDatabaseName("ix_attach_txn");
+
+                    b.ToTable("transaction_attachments", "fl");
+                });
+
             modelBuilder.Entity("FundLedger.Domain.Ledger.TransactionRevision", b =>
                 {
                     b.Property<Guid>("Id")

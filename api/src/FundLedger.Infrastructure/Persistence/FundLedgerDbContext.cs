@@ -42,6 +42,8 @@ public sealed class FundLedgerDbContext(DbContextOptions<FundLedgerDbContext> op
 
     public DbSet<TransactionRevision> TransactionRevisions => Set<TransactionRevision>();
 
+    public DbSet<TransactionAttachment> TransactionAttachments => Set<TransactionAttachment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);

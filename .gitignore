@@ -40,3 +40,6 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Development file storage for attachments
+.local-storage/

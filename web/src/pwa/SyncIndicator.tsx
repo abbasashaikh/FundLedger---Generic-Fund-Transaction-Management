@@ -21,7 +21,7 @@ export function SyncController() {
   const userId = useSession((s) => s.user?.id)
   const online = useOnline()
   const items = useOutbox(userId)
-  const waiting = items.some((i) => i.state === 'PENDING' || i.state === 'SYNCING')
+  const waiting = items.some((i) => i.state !== 'NEEDS_ATTENTION')
   const reportId = useSyncStatus((s) => s.reportId)
 
   useEffect(() => {

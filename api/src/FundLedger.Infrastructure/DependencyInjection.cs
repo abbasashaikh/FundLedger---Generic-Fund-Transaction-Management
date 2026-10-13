@@ -1,7 +1,9 @@
 using FundLedger.Application.Abstractions;
 using FundLedger.Application.Audit;
 using FundLedger.Application.Reports;
+using FundLedger.Application.Attachments;
 using FundLedger.Infrastructure.Exports;
+using FundLedger.Infrastructure.Storage;
 using FundLedger.Application.Settings;
 using FundLedger.Domain.Accounts;
 using FundLedger.Domain.Funds;
@@ -56,6 +58,19 @@ public static class DependencyInjection
         services.AddSingleton<IPinHasher, PinHasher>();
         services.AddScoped<IExportStore, ExportStore>();
         services.AddSingleton<IDocumentRenderer, DocumentRenderer>();
+        services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
+        services.AddSingleton<IObjectStorage>(sp =>
+        {
+            var o = StorageOptions.From(sp.GetRequiredService<IConfiguration>());
+            return o.Provider.ToUpperInvariant() switch
+            {
+                "S3" or "R2" => o.S3.Bucket.Length > 0 && o.S3.AccessKeyId.Length > 0 && o.S3.SecretAccessKey.Length > 0 && o.S3.ServiceUrl.Length > 0
+                    ? new S3ObjectStorage(o.S3)
+                    : throw new InvalidOperationException("Storage:Provider is S3 but Storage:S3 (ServiceUrl, Bucket, AccessKeyId, SecretAccessKey) is incomplete."),
+                "LOCAL" => new LocalObjectStorage(o.LocalPath.Length > 0 ? o.LocalPath : Path.Combine(Path.GetTempPath(), "fundledger-files")),
+                _ => new NoObjectStorage(),
+            };
+        });
         services.AddSingleton<IReceiptCodeSigner, ReceiptCodeSigner>();
 
         services.AddSingleton(sp =>

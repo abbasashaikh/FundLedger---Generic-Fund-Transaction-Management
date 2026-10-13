@@ -18,6 +18,9 @@ import { type OutboxItem, type SyncCommand } from '../../lib/offline/db'
 import { enqueue, getItem, resubmit } from '../../lib/offline/outbox'
 import { isNetworkError } from '../../lib/offline/refdata'
 import { syncNow } from '../../lib/offline/sync'
+import { FilePicker } from '../../components/Attachments'
+import { MAX_FILES, MAX_OFFLINE_FILES, uploadAttachment } from '../../lib/api/attachments'
+import { useOnline } from '../../pwa/useOnline'
 
 export type EntryKind = 'in' | 'out' | 'transfer'
 
@@ -92,6 +95,10 @@ export function EntryForm({ kind, fund, edit, resume }: { kind: EntryKind; fund:
   const owner = useSession((s) => s.user)
   const rc = resume?.command
   const offlineAllowed = me.data?.organization.offlineEnabled ?? true
+  const filesAllowed = me.data?.organization.attachmentsEnabled ?? false
+  const online = useOnline()
+  const [files, setFiles] = useState<File[]>(() => resume?.attachments ?? [])
+  const [fileNote, setFileNote] = useState<string | null>(null)
 
   const keep = [x?.category?.id, x?.account?.id, x?.fromAccount?.id, x?.toAccount?.id, x?.paymentMode?.id]
   const accountsQ = useAccounts(!!edit)
@@ -181,9 +188,9 @@ export function EntryForm({ kind, fund, edit, resume }: { kind: EntryKind; fund:
           fundName: fund.name, ...(kind === 'transfer' ? { fromAccount: accountName(fromId), toAccount: accountName(toId) } : { category: category?.name ?? '', account: accountName(accountId), paymentMode: mode?.name ?? '' }),
         }
         if (resume) {
-          await resubmit(resume.clientTxnId, command, display)
+          await resubmit(resume.clientTxnId, command, display, files.slice(0, MAX_OFFLINE_FILES))
         } else {
-          await enqueue({ userId: owner.id, orgId: owner.organizationId }, command, display)
+          await enqueue({ userId: owner.id, orgId: owner.organizationId }, command, display, files.slice(0, MAX_OFFLINE_FILES))
         }
 
         return { queued: true, item: { ...(resume ?? ({} as OutboxItem)), clientTxnId, command, display } }
@@ -232,6 +239,17 @@ export function EntryForm({ kind, fund, edit, resume }: { kind: EntryKind; fund:
       }
       localStorage.setItem(memKey(kind, fund.id), JSON.stringify({ categoryId, accountId, modeId, fromId, toId } satisfies Remembered))
       setConfirm(false)
+      // The photos and PDFs go up now that the entry exists. A failed file never loses the entry: it can be added again from its page.
+      let failed = 0
+      for (const file of files) {
+        try {
+          await uploadAttachment(result.transaction.id, file, file.name)
+        } catch {
+          failed++
+        }
+      }
+
+      setFileNote(files.length === 0 ? null : failed === 0 ? t('attachments.attached', { count: files.length }) : t('attachments.someFailed', { count: failed }))
       setSaved(result)
       toast.success(t('txn.savedToast', { number: result.transaction.txnNumber }))
       await Promise.all(['dashboard', 'transactions', 'account-balances'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
@@ -277,6 +295,8 @@ export function EntryForm({ kind, fund, edit, resume }: { kind: EntryKind; fund:
     setParty('')
     setReference('')
     setRemarks('')
+    setFiles([])
+    setFileNote(null)
     setClientTxnId(crypto.randomUUID()) // a NEW entry gets a NEW id
   }
 
@@ -305,6 +325,7 @@ export function EntryForm({ kind, fund, edit, resume }: { kind: EntryKind; fund:
         <p className="amount text-3xl font-bold">{formatRupees(tx.amount)}</p>
         <p className="text-text-muted">{tx.txnNumber}</p>
         <p className="text-sm">{t('txn.fundBalance', { balance: formatRupees(saved.fundClosingBalance) })}</p>
+        {fileNote && <p className="text-sm text-text-muted">{fileNote}</p>}
         <div className="flex flex-wrap justify-center gap-2">
           <Button onClick={addAnother}>{t('txn.addAnother')}</Button>
           {tx.type === 'DEPOSIT' && me.data?.organization.receiptsEnabled && <ReceiptButton id={tx.id} variant="secondary" />}
@@ -379,6 +400,7 @@ export function EntryForm({ kind, fund, edit, resume }: { kind: EntryKind; fund:
             <Field label={t('txn.remarks')} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
           </div>
         )}
+        {filesAllowed && !x && <FilePicker files={files} onChange={setFiles} max={online ? MAX_FILES : MAX_OFFLINE_FILES} />}
 
         {edit?.editRequiresReason && (
           <Field label={t('txn.editReason')} required value={reason} onChange={(e) => setReason(e.target.value)} error={err('reason')} maxLength={500}

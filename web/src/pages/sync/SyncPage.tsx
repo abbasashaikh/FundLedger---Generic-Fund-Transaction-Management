@@ -92,6 +92,7 @@ function Row({ item }: { item: OutboxItem }) {
       <span className="amount font-semibold">{formatRupees(item.command.amount)}</span>
       <span className="min-w-0 flex-1 truncate text-sm text-text-muted">{entryTitle(item)} · {item.command.purpose}</span>
       <Badge tone={item.state === 'NEEDS_ATTENTION' ? 'danger' : 'warning'}>{t(`sync.state.${item.state}`)}</Badge>
+      {item.attachments && item.attachments.length > 0 && <span className="text-xs text-text-muted">{t('sync.filesWaiting', { count: item.attachments.length })}</span>}
       <span className="w-full text-xs text-text-muted">{item.display.fundName} · {t('sync.savedOn', { when: formatDateTime(item.createdAt) })}</span>
     </div>
   )

@@ -37,6 +37,8 @@ public interface IFundLedgerDb
 
     DbSet<TransactionRevision> TransactionRevisions { get; }
 
+    DbSet<TransactionAttachment> TransactionAttachments { get; }
+
     DatabaseFacade Database { get; }
 
     ChangeTracker ChangeTracker { get; }

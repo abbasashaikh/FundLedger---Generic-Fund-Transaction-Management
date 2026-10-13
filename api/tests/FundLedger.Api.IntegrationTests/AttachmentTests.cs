@@ -272,6 +272,15 @@ public sealed class AttachmentTests(PostgresFixture db) : IAsyncLifetime
         Assert.Contains("response-content-type=application%2Fpdf", url.Query, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("C:\fakepath\IMG_1.PNG", "image/png", "IMG_1.png")]
+    [InlineData("../../etc/passwd", "image/jpeg", "passwd.jpg")]
+    [InlineData("..\..\IMG_0042.JPEG", "image/jpeg", "IMG_0042.jpg")]
+    [InlineData("", "application/pdf", "attachment.pdf")]
+    [InlineData("bill .pdf", "application/pdf", "bill.pdf")]
+    public void File_names_are_cleaned_the_same_way_on_every_platform(string name, string type, string expected) =>
+        Assert.Equal(expected, FundLedger.Application.Attachments.AttachmentService.CleanName(name, type));
+
     [Fact]
     public async Task Local_storage_refuses_keys_that_climb_out_of_its_folder()
     {

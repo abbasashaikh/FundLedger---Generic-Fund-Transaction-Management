@@ -215,7 +215,10 @@ public sealed class AttachmentService(
     /// <summary>A safe display name: no path, no control characters, and an extension that matches the real type.</summary>
     internal static string CleanName(string? name, string type)
     {
-        var baseName = Path.GetFileNameWithoutExtension(name ?? string.Empty).Replace('\\', '_').Replace('/', '_');
+        // Windows browsers can send "C:\dir\photo.jpg"; Linux's Path doesn't treat a backslash as a separator, so cut by hand.
+        var raw = name ?? string.Empty;
+        raw = raw[(raw.LastIndexOfAny(['/', '\\']) + 1)..];
+        var baseName = Path.GetFileNameWithoutExtension(raw);
         baseName = new string(baseName.Where(c => !char.IsControl(c)).ToArray()).Trim();
         if (baseName.Length == 0)
         {

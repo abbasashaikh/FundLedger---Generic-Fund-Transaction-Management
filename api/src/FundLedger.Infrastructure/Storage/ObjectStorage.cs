@@ -39,6 +39,9 @@ public sealed class S3Options
     public string AccessKeyId { get; set; } = string.Empty;
 
     public string SecretAccessKey { get; set; } = string.Empty;
+
+    /// <summary>"auto" for R2. Backblaze B2 and most others need the real region name (for B2 it is in the endpoint: s3.<b>us-west-004</b>.backblazeb2.com).</summary>
+    public string Region { get; set; } = "auto";
 }
 
 /// <summary>Attachments switched off: nothing is stored, nothing is promised.</summary>
@@ -102,7 +105,7 @@ public sealed class S3ObjectStorage : IObjectStorage, IDisposable
         {
             ServiceURL = o.ServiceUrl,
             ForcePathStyle = true,
-            AuthenticationRegion = "auto",
+            AuthenticationRegion = string.IsNullOrWhiteSpace(o.Region) ? "auto" : o.Region,
             // R2 does not take the SDK's default CRC32 trailers on uploads.
             RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
             ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,

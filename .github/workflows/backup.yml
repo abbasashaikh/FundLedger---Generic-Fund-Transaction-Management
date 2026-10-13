@@ -1,0 +1,77 @@
+name: Nightly backup
+
+# Free-plan databases keep only a few hours of point-in-time history, so every night this job takes a full copy of the
+# database, ENCRYPTS it with the owner's public key (the private key never leaves the owner), and stores it in a private bucket.
+# The repository is public: nothing readable may ever be written to a log or an artifact. The copy goes only to the bucket.
+# Off until the repository variable BACKUP_ENABLED=true. Setup and restore steps: docs/ops/backup-restore.md
+on:
+  schedule:
+    - cron: "30 20 * * *" # 02:00 India time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: vars.BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET }}
+      AWS_DEFAULT_REGION: ${{ vars.BACKUP_S3_REGION }}
+      ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT }}
+      BUCKET: ${{ vars.BACKUP_S3_BUCKET }}
+      RECIPIENT: ${{ vars.BACKUP_AGE_PUBLIC_KEY }}
+      KEEP_DAYS: "30"
+    steps:
+      - name: Check the settings are all there
+        env:
+          DB: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          for v in DB AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION ENDPOINT BUCKET RECIPIENT; do
+            test -n "${!v}" || { echo "missing setting: $v" >&2; exit 1; }
+          done
+          case "$RECIPIENT" in age1*) ;; *) echo "BACKUP_AGE_PUBLIC_KEY must be an age public key (starts with age1)" >&2; exit 1 ;; esac
+
+      - name: Install age
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Dump the database
+        env:
+          DB: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          # Custom format: compressed, and restorable table by table. No owners or grants, so it restores anywhere.
+          docker run --rm -e DB postgres:17 sh -c 'pg_dump --dbname="$DB" --format=custom --no-owner --no-privileges --schema=fl' > dump.pgdump
+          size=$(stat -c %s dump.pgdump)
+          echo "dump size: $size bytes"
+          test "$size" -gt 20000 || { echo "the dump is suspiciously small" >&2; exit 1; }
+          # It must be a readable archive that contains the transactions table.
+          docker run --rm -i postgres:17 pg_restore --list < dump.pgdump | grep -q "TABLE DATA fl transactions" || { echo "no transactions table in the dump" >&2; exit 1; }
+
+      - name: Encrypt it (only the owner's private key can open it)
+        run: |
+          age -r "$RECIPIENT" -o dump.pgdump.age dump.pgdump
+          shred -u dump.pgdump
+
+      - name: Upload to the private bucket
+        run: |
+          name="db/fundledger-$(date -u +%Y-%m-%d-%H%M).pgdump.age"
+          aws s3 cp dump.pgdump.age "s3://$BUCKET/$name" --endpoint-url "$ENDPOINT" --only-show-errors
+          aws s3 ls "s3://$BUCKET/$name" --endpoint-url "$ENDPOINT"
+          echo "stored $name"
+
+      - name: Remove copies older than the retention period
+        run: |
+          cutoff=$(date -u -d "-$KEEP_DAYS days" +%Y-%m-%d)
+          aws s3 ls "s3://$BUCKET/db/" --endpoint-url "$ENDPOINT" | awk '{print $4}' | while read -r f; do
+            day=$(echo "$f" | sed -n 's/^fundledger-\([0-9-]\{10\}\)-.*/\1/p')
+            if [ -n "$day" ] && [ "$day" \< "$cutoff" ]; then
+              aws s3 rm "s3://$BUCKET/db/$f" --endpoint-url "$ENDPOINT" --only-show-errors && echo "removed $f"
+            fi
+          done

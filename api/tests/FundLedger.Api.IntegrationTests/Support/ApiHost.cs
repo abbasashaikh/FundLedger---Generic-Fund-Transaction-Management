@@ -21,7 +21,8 @@ public sealed class ShiftableTimeProvider : TimeProvider
 
 /// <summary>The real API over the test database, connected as the runtime (RLS) role.</summary>
 /// <param name="storage">"Local" (a throw-away folder) or "None" (attachments switched off).</param>
-public sealed class ApiHost(PostgresFixture db, int loginPerIpLimit = 100_000, string storage = "Local") : WebApplicationFactory<Program>
+/// <param name="trustAllProxies">Behind a hosting platform's load balancer: believe X-Forwarded-For from anyone.</param>
+public sealed class ApiHost(PostgresFixture db, int loginPerIpLimit = 100_000, string storage = "Local", bool trustAllProxies = false) : WebApplicationFactory<Program>
 {
     private readonly string _files = Path.Combine(Path.GetTempPath(), "fundledger-test-" + Guid.NewGuid().ToString("N"));
 
@@ -36,6 +37,7 @@ public sealed class ApiHost(PostgresFixture db, int loginPerIpLimit = 100_000, s
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:FundLedger", db.AppConnectionString);
         builder.UseSetting("RateLimiting:PermitsPerMinute", "100000");
+        builder.UseSetting("ForwardedHeaders:TrustAllProxies", trustAllProxies ? "true" : "false");
         builder.UseSetting("Storage:Provider", storage);
         builder.UseSetting("Storage:LocalPath", _files);
         builder.UseSetting("RateLimiting:LoginPerIpPer15Min", loginPerIpLimit.ToString(System.Globalization.CultureInfo.InvariantCulture));

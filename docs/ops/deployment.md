@@ -1,4 +1,6 @@
-# Deployment — one-time setup and day-to-day operation
+# Deployment — one-time setup and day-to-day operation (VPS path)
+
+> **No money to spend?** Use the free path in [go-live-guide.md](go-live-guide.md) (Render + Cloudflare Pages + Neon + Backblaze B2). This file describes the paid VPS path, which needs no code change to switch to later.
 
 Architecture (ADR-0006):
 - **Neon** for PostgreSQL. This is already set up; see [database-setup.md](database-setup.md).

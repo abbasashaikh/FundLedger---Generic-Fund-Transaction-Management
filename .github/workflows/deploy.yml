@@ -2,13 +2,20 @@ name: Deploy
 
 # main  -> staging (automatic after CI-equivalent build)
 # v*    -> production (requires approval on the "production" GitHub Environment)
-# Disabled until repository variable DEPLOY_ENABLED=true (set once the VPS,
-# Cloudflare and secrets exist — see docs/ops/deployment.md).
+# Disabled until repository variable DEPLOY_ENABLED=true (set once hosting,
+# Cloudflare and secrets exist — see docs/ops/go-live-guide.md).
+# Hosting is chosen by the repository variable HOSTING: "render" (free, no server to run)
+# or anything else / unset for the VPS path in docs/ops/deployment.md.
 on:
   push:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      image_only:
+        description: "Only build and publish the image (for the very first setup: a hosting service needs an image to exist before it can be created)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,12 +30,14 @@ env:
 
 jobs:
   ci:
-    if: vars.DEPLOY_ENABLED == 'true'
+    if: vars.DEPLOY_ENABLED == 'true' && !inputs.image_only
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
   image:
     needs: ci
+    # Normal runs: after CI passed. First-time setup: when asked for the image alone (CI is skipped then).
+    if: ${{ !cancelled() && (needs.ci.result == 'success' || inputs.image_only) }}
     runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
@@ -53,7 +62,10 @@ jobs:
         with:
           context: api
           push: true
-          tags: ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+          # The moving tag (staging / production) lets a hosting platform create its service before the first deploy hook runs.
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
           build-args: |
             APP_VERSION=${{ steps.meta.outputs.version }}
             GIT_SHA=${{ github.sha }}
@@ -62,6 +74,7 @@ jobs:
 
   deploy:
     needs: image
+    if: ${{ !inputs.image_only && needs.image.result == 'success' }}
     runs-on: ubuntu-24.04
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
     env:
@@ -82,8 +95,18 @@ jobs:
           ConnectionStrings__Migrations: ${{ secrets.DB_MIGRATIONS_URL }}
         run: docker run --rm -e ConnectionStrings__Migrations "$IMAGE:$TAG" migrate
 
-      # 2. API + worker on the VPS (health-gated, auto-restores previous tag on failure).
+      # 2a. Free hosting: tell Render to run this exact image. (Render keeps the previous deploy for rollback.)
+      - name: Deploy API to Render
+        if: vars.HOSTING == 'render'
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          test -n "$RENDER_DEPLOY_HOOK" || { echo "secret RENDER_DEPLOY_HOOK is missing" >&2; exit 1; }
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK&imgURL=$IMAGE:$TAG" > /dev/null
+
+      # 2b. API + worker on a VPS (health-gated, auto-restores previous tag on failure).
       - name: Deploy API to VPS
+        if: vars.HOSTING != 'render'
         env:
           SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
@@ -118,11 +141,18 @@ jobs:
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy web/dist --project-name=${{ vars.PAGES_PROJECT }} --branch=main --commit-hash=${{ github.sha }}
 
-      # 4. Smoke test: the running API is the build we just deployed.
+      # 4. Smoke test: the running API is the build we just deployed. A platform deploy takes a few
+      #    minutes (and a sleeping free service needs a minute to wake), so wait up to ~10 minutes.
       - name: Smoke test
         env:
           API_BASE_URL: ${{ vars.API_BASE_URL }}
         run: |
-          curl -fsS "$API_BASE_URL/health/ready"
-          commit="$(curl -fsS "$API_BASE_URL/api/v1/version" | jq -r .commit)"
-          test "$commit" = "$GITHUB_SHA" || { echo "running $commit, expected $GITHUB_SHA"; exit 1; }
+          for i in $(seq 1 60); do
+            commit="$(curl -fsS --max-time 30 "$API_BASE_URL/api/v1/version" 2>/dev/null | jq -r .commit 2>/dev/null || true)"
+            if [ "$commit" = "$GITHUB_SHA" ]; then
+              curl -fsS --max-time 30 "$API_BASE_URL/health/ready"
+              echo; echo "running $commit"; exit 0
+            fi
+            echo "attempt $i: running '${commit:-nothing yet}', expected $GITHUB_SHA"; sleep 10
+          done
+          echo "the new version did not come up" >&2; exit 1

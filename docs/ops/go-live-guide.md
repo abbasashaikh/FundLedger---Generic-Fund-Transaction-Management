@@ -1,112 +1,131 @@
-# Go-live guide for the owner — step by step
+# Go-live guide for the owner — free path, step by step
 
-This is the order to do things in. Each step says what you do, what to send me (never a password in chat; see "What to share"), and how we know it worked. Do the steps in order; each takes minutes, not hours. Staging comes first, production later, with the same steps.
+Everything here costs **nothing**. No domain, no server to rent. Each step says what you do, what to send me, and how we know it worked. Do them in order; each takes 10–30 minutes. If a screen looks different from what I describe (these sites change their menus), tell me what you see and I'll adjust.
 
-**Rough monthly cost:** VPS about US$5–10, domain about US$10–15 a year, Cloudflare (Pages, R2 small usage, DNS) free to a few dollars, Neon Launch plan about US$19, Sentry and Better Stack free tiers.
+## The free stack
+
+| Job | Service | Free allowance (check at sign-up) |
+|---|---|---|
+| Database | **Neon** (already set up) | 0.5 GB, sleeps when idle, only a few hours of history |
+| API | **Render** web service (runs our Docker image) | 512 MB RAM, 750 hours a month (one service awake all month), sleeps after 15 min idle |
+| App (the PWA) | **Cloudflare Pages** | unlimited bandwidth |
+| Photos and backups | **Backblaze B2** (S3-compatible) | 10 GB |
+| Build and deploy | **GitHub Actions** + GitHub container registry | free for a public repository |
+| Keeps the API awake and alerts you | **UptimeRobot** | 50 monitors, checks every 5 minutes |
+| Addresses | `*.pages.dev` and `*.onrender.com` | free, with HTTPS |
+
+**Honest limits.** Free plans have no uptime promise and can change their rules. The API shares 512 MB of memory, so very large PDF exports can be slow. Neon keeps only about 6 hours of history, so we take a **nightly encrypted backup** ourselves (step 7). With one free Render service you run **one live environment**: it is used for user testing first and becomes the real one at go-live (step 9). Nothing in the code changes if you later pay for more.
+
+If you do have a credit card and want something sturdier at no cost, Oracle Cloud "Always Free" gives a real server. It is more work to set up; tell me and I'll write that variant.
 
 ## What to share with me, and what never to share
 
 | Share | Never share in chat |
 |---|---|
-| The domain name, the VPS IP address, Cloudflare account ID, bucket names, the R2 endpoint address | Passwords, PINs, API tokens, secret keys, the Neon owner password |
-| Screenshots with secrets covered | Any `.env` file contents |
+| Project names and public web addresses (`...pages.dev`, `...onrender.com`), bucket names, the B2 endpoint address, your Cloudflare account ID | Passwords, PINs, API tokens, secret keys, the Neon owner password, the contents of any `.env` file |
 
-Secrets go straight into the GitHub **Settings → Environments** page, or onto the VPS in a file, by you. I never need to see them.
+Secrets go straight into the GitHub or Render settings page by you. I never need to see them.
 
 ---
 
-## Step 1 — Neon: protect the database (15 min)
+## Step 1 — Neon: reset the owner password (5 min)
 
-1. Open the Neon console → your project `fundledger` → **Settings → Billing** and move to the **Launch** plan (the free plan sleeps the database and cannot keep point-in-time recovery long enough).
-2. **Reset the owner password** (it appeared in earlier chat): *Roles → fundledger_owner → Reset password*. Save the new connection string in your password manager. Do the same for `fl_api_staging` and `fl_api_prod` if they exist (they do not yet; I create them in step 8 with you).
-3. Check **Settings → Restore window**: set it to at least 7 days.
+1. Neon console → project `fundledger` → **Roles** → `fundledger_owner` → **Reset password**. Keep the new connection string in a password manager. (The old one appeared in chat.)
+2. Stay on the free plan. In **Settings** note the "restore window" (a few hours): that is why step 7 exists.
 
-Done when: you can see Launch on the billing page.
+## Step 2 — Cloudflare account and Pages (15 min)
 
-## Step 2 — Domain (20 min)
+1. Create a free Cloudflare account (no card needed). Open **Workers & Pages → Create → Pages → Upload assets**, name the project `fundledger` (the address becomes `fundledger.pages.dev`; if taken, add letters and tell me the final name). Upload any small file so it is created.
+2. **My Profile → API Tokens → Create Token → Create Custom Token.** Permission: *Account → Cloudflare Pages → Edit*. Create it and copy it once (this is `CLOUDFLARE_API_TOKEN`).
+3. Note your **Account ID** (right side of the dashboard home page).
 
-1. Buy a domain (Hostinger or Cloudflare Registrar). Example below: `yourorg.org`.
-2. Move DNS to **Cloudflare** (free): add the site in Cloudflare, copy the two nameservers it gives you into your registrar.
+Send me: the Pages project name and the account ID.
 
-Send me: the domain name.
+## Step 3 — Backblaze B2 account and buckets (20 min)
 
-## Step 3 — VPS (30 min)
+1. Create a free Backblaze account (you may be asked to verify a phone number).
+2. **Buckets → Create a Bucket**: `fundledger-files` and `fundledger-backups`, both **Private**. Leave encryption on.
+3. Open each bucket's page and note the **S3 endpoint** (looks like `s3.us-west-004.backblazeb2.com`); the region is the middle part (`us-west-004`).
+4. **Application Keys → Add a New Application Key**: name `fundledger`, allow access to both buckets, **Read and Write**. Copy the **keyID** and **applicationKey** once.
+5. On `fundledger-files` open **Bucket Settings → CORS Rules** and add a rule that allows the origin `https://fundledger.pages.dev` (your Pages address) to download (GET). This lets the app show photos.
 
-1. Create a VPS: Ubuntu 24.04, 2 vCPU / 2 GB RAM is enough (Hostinger KVM 2, Hetzner CX22, DigitalOcean 2 GB). Choose a region close to your users (Mumbai or Singapore).
-2. Add your SSH key when creating it (or note the root password and tell me you did; we turn passwords off in step 4).
-3. In Cloudflare DNS add (grey cloud, "DNS only"):
-   - `api-staging` → A → the VPS IP
-   - `api` → A → the VPS IP
+Send me: the endpoint address and the two bucket names (not the keys).
 
-Send me: the VPS IP address.
+## Step 4 — Render: the API (20 min)
 
-## Step 4 — Prepare the VPS (I give you the exact commands; 20 min)
+1. Create a free Render account (GitHub sign-in is fine). Check at sign-up that a free web service does not ask for a card; if it does, stop and tell me.
+2. First, one image has to exist. In GitHub open **Actions → Deploy → Run workflow**, tick **Only build and publish the image**, and run it (about 5 minutes; it needs none of the later settings). Then make the package public: GitHub → your profile → **Packages → fundledger-api → Package settings → Change visibility → Public**.
+3. Render → **New → Web Service → Existing image**, image URL `ghcr.io/abbasashaikh/fundledger-api:staging`, **Region: Singapore**, **Instance type: Free**, name `fundledger-api`.
+4. Under **Environment**, add these variables (the values in angle brackets are yours; secrets only here):
 
-I will give you a short copy-paste block that installs Docker, creates the `deploy` user, makes `/opt/fundledger/...`, creates the Docker network, starts Caddy (the web front door that gets HTTPS certificates automatically) and turns on the firewall (ports 22, 80, 443 only). The commands are in [deployment.md](deployment.md) section B. You paste them into the VPS console (Hostinger has a browser terminal). Say "VPS ready" when `docker ps` shows Caddy running.
+   | Name | Value |
+   |---|---|
+   | `PORT` | `8080` |
+   | `ASPNETCORE_ENVIRONMENT` | `Staging` |
+   | `ForwardedHeaders__TrustAllProxies` | `true` (Render's proxy is the only way in) |
+   | `ConnectionStrings__FundLedger` | the runtime database URL from step 5 (the **pooled** host) |
+   | `Cors__AllowedOrigins__0` | `https://fundledger.pages.dev` |
+   | `Auth__Jwt__SigningKeyPem` | the one line from step 5 |
+   | `Storage__Provider` | `S3` |
+   | `Storage__S3__ServiceUrl` | `https://<your B2 endpoint>` |
+   | `Storage__S3__Region` | `<your region, for example us-west-004>` |
+   | `Storage__S3__Bucket` | `fundledger-files` |
+   | `Storage__S3__AccessKeyId` | the keyID |
+   | `Storage__S3__SecretAccessKey` | the applicationKey |
 
-## Step 5 — Cloudflare Pages and R2 (20 min)
+5. **Settings → Health Check Path**: `/health/live`. Save and let it deploy. When it is live, open `https://<your service>.onrender.com/api/v1/version`: you should see a small JSON.
+6. Render → your service → **Settings → Deploy Hook**: copy the URL (this is `RENDER_DEPLOY_HOOK`, a secret).
 
-1. **Pages:** Workers & Pages → Create → Pages → *Direct Upload* → project name `fundledger-staging`. Add custom domain `staging.yourorg.org`.
-2. **R2:** R2 → Create bucket `fundledger-staging`, public access **off**. Follow [attachments-storage.md](attachments-storage.md) for the token and the CORS rule (the CORS origin is `https://staging.yourorg.org`).
-3. **API token for deploys:** My Profile → API Tokens → Create → template *Edit Cloudflare Workers*, or a custom token with **Cloudflare Pages: Edit** on your account. Copy it once.
-4. Note your **Account ID** (right side of the Cloudflare dashboard home).
+Send me: the service address (`...onrender.com`).
 
-Send me: the account ID, the Pages project name, the bucket name, the R2 endpoint address (not the keys).
+## Step 5 — Database role and signing key (I guide you live; 15 min)
 
-## Step 6 — Monitoring accounts (15 min)
+1. I give you a short SQL block; you run it in the Neon **SQL Editor**. It creates the login role `fl_api_staging` (runtime only, no owner rights). Put the password it asks you to choose in your password manager, and build the **pooled** connection URL from Neon's connection dialog.
+2. On your computer, with the .NET SDK installed: `dotnet run --project api/src/FundLedger.Api -- generate-jwt-key` prints one `Auth__Jwt__SigningKeyPem=...` line. Copy that line (not the public key) into Render (step 4). Do not save it in any file in the project.
 
-1. **Sentry:** create an account, projects `fundledger-api` (platform .NET) and `fundledger-web` (React). Copy each project's **DSN** (a web address, not secret enough to matter, but keep it in the env files).
-2. **Better Stack:** create an account, add a monitor for `https://api-staging.yourorg.org/health/ready` (every minute) and later `https://api.yourorg.org/health/ready`.
+## Step 6 — GitHub secrets and the switch (15 min)
 
-## Step 7 — GitHub secrets and variables (20 min)
-
-GitHub → repository → **Settings → Environments → New environment → `staging`**. Add:
+GitHub → repository → **Settings → Environments → New environment `staging`**. Add:
 
 | Kind | Name | Value |
 |---|---|---|
-| Secret | `DB_MIGRATIONS_URL` | the staging **owner** connection string (direct host, not pooled) |
-| Secret | `VPS_SSH_KEY` | the private key for the `deploy` user (I tell you how to generate it in step 4) |
-| Secret | `VPS_KNOWN_HOSTS` | output of `ssh-keyscan <VPS IP>` |
-| Secret | `CLOUDFLARE_API_TOKEN` | the token from step 5 |
-| Variable | `VPS_HOST` | the VPS IP |
-| Variable | `VPS_USER` | `deploy` |
-| Variable | `API_BASE_URL` | `https://api-staging.yourorg.org` |
-| Variable | `PAGES_PROJECT` | `fundledger-staging` |
-| Variable | `CLOUDFLARE_ACCOUNT_ID` | the account ID |
+| Secret | `DB_MIGRATIONS_URL` | the **owner** connection string (direct host, not pooled) |
+| Secret | `RENDER_DEPLOY_HOOK` | from step 4 |
+| Secret | `CLOUDFLARE_API_TOKEN` | from step 2 |
+| Variable | `API_BASE_URL` | `https://<your service>.onrender.com` |
+| Variable | `PAGES_PROJECT` | `fundledger` |
+| Variable | `CLOUDFLARE_ACCOUNT_ID` | from step 2 |
 
-Also: set the package `fundledger-api` (Packages on your GitHub profile) to **public** after the first image is pushed, or tell me and I will give you the token route.
+Then **Settings → Secrets and variables → Actions → Variables** (repository level): `HOSTING` = `render`. **Last of all:** `DEPLOY_ENABLED` = `true`.
 
-## Step 8 — Database roles and the signing key (I guide you live; 15 min)
+Merge any change (or run the *Deploy* workflow by hand): it runs the tests, applies database changes, tells Render to run the new image, publishes the app, and waits until the running version matches. Open `https://fundledger.pages.dev`.
 
-1. Create the runtime role `fl_api_staging` in Neon (a login role in the `fundledger_app` group). I give you the exact SQL; you run it in the Neon SQL editor and put the generated password in your password manager.
-2. On any computer: `dotnet run --project api/src/FundLedger.Api -- generate-jwt-key` and keep the single `Auth__Jwt__SigningKeyPem=...` line.
-3. On the VPS create `/opt/fundledger/staging/.env` from `infra/vps/app/.env.example` and fill it: the runtime connection string (pooled host), `Cors__AllowedOrigins__0=https://staging.yourorg.org`, the signing key line, the Storage values from step 5, the Sentry DSN. Then `chmod 600 .env`.
+## Step 7 — Keep it awake, alerts, and nightly backup (25 min)
 
-## Step 9 — Switch deployment on (5 min)
+1. **UptimeRobot** (free account): add a monitor of type HTTP(s), URL `https://<your service>.onrender.com/health/live`, every 5 minutes, with your email for alerts. This also stops the free API from sleeping.
+2. **Backup key:** download `age` from <https://github.com/FiloSottile/age/releases> and run `age-keygen -o backup-key.txt`. It prints a line starting `Public key: age1...`. **Keep `backup-key.txt` offline in two places** (the file is the only way to open a backup; if you lose it the backups are useless). Send me only the `age1...` public key.
+3. GitHub → repository settings. Secrets: `BACKUP_DATABASE_URL` (the owner connection string, direct host), `BACKUP_S3_KEY_ID`, `BACKUP_S3_SECRET` (the B2 key from step 3). Variables: `BACKUP_S3_ENDPOINT` (`https://s3.<region>.backblazeb2.com`), `BACKUP_S3_REGION`, `BACKUP_S3_BUCKET` (`fundledger-backups`), `BACKUP_AGE_PUBLIC_KEY` (the `age1...` line), and last `BACKUP_ENABLED` = `true`.
+4. Actions → *Nightly backup* → **Run workflow** once and check it is green. How to restore: [backup-restore.md](backup-restore.md).
 
-1. GitHub → Settings → **Secrets and variables → Actions → Variables** → add `DEPLOY_ENABLED` = `true`. (Do this last.)
-2. Merge any PR, or re-run the *Deploy* workflow. Watch it go green.
-3. Open `https://api-staging.yourorg.org/health/ready` (should say healthy) and `https://staging.yourorg.org`.
+## Step 8 — First sign-in (10 min)
 
-## Step 10 — First staging sign-in (10 min)
+I run the one-time command that creates your organization and first Admin and prints a temporary PIN once; you sign in, choose your own PIN, then create the fund, accounts and users. Then user testing starts: 5–8 real people, a script that covers every acceptance row, a timed entry test, installing the app on their phones.
 
-I run the one-time command that creates your organization and first Admin on staging; it prints a temporary PIN once. You sign in at `https://staging.yourorg.org`, choose your own PIN, create the fund, accounts and users.
+## Step 9 — Go-live (when testing is signed off)
 
-## Then: I run the rest (no action from you except sign-offs)
+1. Neon: create a **new database branch** for real data (for example `production`), run the migration against it, create its runtime role.
+2. Render: change `ConnectionStrings__FundLedger` to the new branch's runtime URL and redeploy.
+3. I run the production bootstrap; Admins hand out temporary PINs in person.
+4. The test data stays in the old branch (delete it later).
 
-- Load test, backup and restore drill, rollback rehearsal, security scan against staging.
-- UAT with 5–8 real users on staging, the timed entry test, installing the app on phones.
-- Production: repeat steps 3, 5, 7, 8 and 9 with `api`, `app`, `fundledger-prod`, and a **separate Neon branch**; then the production bootstrap.
+## Checklist
 
-## Quick check-list to tick
-
-- [ ] Neon on Launch plan; owner password reset
-- [ ] Domain on Cloudflare DNS
-- [ ] VPS running; DNS records `api-staging` and `api` pointing at it
-- [ ] Docker + Caddy + firewall set up
-- [ ] Pages project, R2 bucket + token + CORS, deploy token
-- [ ] Sentry and Better Stack accounts
-- [ ] GitHub `staging` environment secrets and variables
-- [ ] `fl_api_staging` role, signing key, VPS `.env`
-- [ ] `DEPLOY_ENABLED=true`, first deploy green
-- [ ] Staging organization created and Admin signed in
+- [ ] Neon owner password reset
+- [ ] Cloudflare account, Pages project, deploy token, account ID
+- [ ] Backblaze account, two private buckets, application key, CORS rule
+- [ ] Render service running from the image; version address answers
+- [ ] `fl_api_staging` role and signing key set in Render
+- [ ] GitHub environment `staging` secrets and variables; `HOSTING=render`; `DEPLOY_ENABLED=true`; first deploy green
+- [ ] UptimeRobot monitor
+- [ ] Backup key kept offline in two places; nightly backup run once, green
+- [ ] First Admin signed in on the live address

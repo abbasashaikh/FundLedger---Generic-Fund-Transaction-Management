@@ -131,12 +131,24 @@ internal static class ApiSetup
             };
         });
 
-        // Behind Caddy on the VPS: trust X-Forwarded-* only from private networks.
+        // Behind Caddy on a VPS: trust X-Forwarded-* only from private networks.
+        // Behind a hosting platform's load balancer (Render, ...) the container is reachable ONLY through that proxy, so
+        // ForwardedHeaders:TrustAllProxies=true lets the real client address through: without it every user would share one
+        // address and one rate limit. Never set it where the API port is reachable directly.
+        var trustAll = config.GetValue("ForwardedHeaders:TrustAllProxies", false);
         services.Configure<ForwardedHeadersOptions>(o =>
         {
             o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             o.KnownIPNetworks.Clear();
             o.KnownProxies.Clear();
+            if (trustAll)
+            {
+                o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("0.0.0.0/0"));
+                o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("::/0"));
+                o.ForwardLimit = 1;
+                return;
+            }
+
             o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("10.0.0.0/8"));
             o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
             o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("192.168.0.0/16"));

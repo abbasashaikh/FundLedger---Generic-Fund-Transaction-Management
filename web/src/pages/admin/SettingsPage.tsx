@@ -69,6 +69,7 @@ function SettingsForm({ saved }: { saved: Settings }) {
   const org = (patch: Partial<Settings['organization']>) => setDraft((d) => ({ ...d, organization: { ...d.organization, ...patch } }))
   const txn = (patch: Partial<Settings['transactions']>) => setDraft((d) => ({ ...d, transactions: { ...d.transactions, ...patch } }))
   const auth = (patch: Partial<Settings['auth']>) => setDraft((d) => ({ ...d, auth: { ...d.auth, ...patch } }))
+  const offline = (patch: Partial<Settings['offline']>) => setDraft((d) => ({ ...d, offline: { ...d.offline, ...patch } }))
   const rcpt = (patch: Partial<Settings['receipts']>) => setDraft((d) => ({ ...d, receipts: { ...d.receipts, ...patch } }))
   const num = (v: string) => (v === '' ? 0 : Number(v.replace(/\D/g, '')))
   // The API names nested fields like "Organization.Name"; match case-insensitively.
@@ -120,6 +121,12 @@ function SettingsForm({ saved }: { saved: Settings }) {
           <Checkbox label={t('settings.showRecordedBy')} checked={draft.receipts.showRecordedBy} onChange={(v) => rcpt({ showRecordedBy: v })} />
           <Field label={t('settings.footerText')} value={draft.receipts.footerText} onChange={(e) => rcpt({ footerText: e.target.value })} error={err('receipts.footerText')} maxLength={200} />
           <p className="text-xs text-text-muted">{t('settings.noTaxClaim')}</p>
+        </Group>
+
+        <Group title={t('settings.offline')}>
+          <Checkbox label={t('settings.offlineEnabled')} checked={draft.offline.enabled} onChange={(v) => offline({ enabled: v })} />
+          <Field label={t('settings.queueAge')} inputMode="numeric" value={String(draft.offline.maxQueueAgeHours)} onChange={(e) => offline({ maxQueueAgeHours: num(e.target.value) })}
+            error={err('offline.maxQueueAgeHours')} hint={t('settings.queueAgeHint')} />
         </Group>
 
         <Button type="submit" size="lg" disabled={changed.length === 0}>{t('actions.save')}</Button>

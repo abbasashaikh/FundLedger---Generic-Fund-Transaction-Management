@@ -36,7 +36,31 @@
     "save": "Save changes"
   },
   "sync": {
-    "allSynced": "All entries synced"
+    "allSynced": "All entries synced",
+    "needsAttention": "{{count}} need attention",
+    "waiting": "{{count}} waiting to sync",
+    "offline": "You're offline",
+    "title": "Waiting to sync",
+    "syncNow": "Sync now",
+    "empty": "Nothing is waiting. Everything on this device is saved on the server.",
+    "attentionHeading": "Needs your attention",
+    "waitingHeading": "Waiting to be sent",
+    "editRetry": "Edit & retry",
+    "discard": "Discard",
+    "discardTitle": "Discard this entry?",
+    "discardBody": "It was never recorded, and this can't be undone. The discard is noted in the audit log.",
+    "savedOn": "saved {{when}}",
+    "state": {
+      "PENDING": "Pending sync",
+      "SYNCING": "Sending…",
+      "NEEDS_ATTENTION": "Needs attention"
+    },
+    "syncedToast": "{{count}} entries synced",
+    "rejectedToast": "{{count}} entries couldn't be added: open Waiting to sync",
+    "queuedToast": "Saved on this device",
+    "savedOnDevice": "Saved on this device",
+    "savedOnDeviceBody": "It will be sent as soon as you're online. You can keep adding entries.",
+    "viewPending": "View pending"
   },
   "theme": {
     "label": "Theme",
@@ -311,7 +335,8 @@
       "INCREASE": "Increase balance",
       "DECREASE": "Decrease balance"
     },
-    "status": "Status"
+    "status": "Status",
+    "needsInternet": "Needs internet connection"
   },
   "ledger": {
     "ownOnly": "My transactions only",
@@ -338,7 +363,9 @@
     "noMatches": "No transactions match.",
     "empty": "No transactions yet.",
     "emptyHint": "Tap ＋ to record the first one.",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "pendingHeading": "Pending sync",
+    "savedData": "Showing what was last saved on this device ({{when}}). It may be out of date."
   },
   "dashboard": {
     "noFundsAdmin": "No fund exists yet. Create your first fund to start recording money.",
@@ -508,7 +535,13 @@
       "auth.sessionAbsoluteDays": "Sign in again after (days)",
       "receipts.enabled": "Receipts allowed",
       "receipts.footerText": "Receipt footer",
-      "receipts.showRecordedBy": "Show \"Recorded by\""
-    }
+      "receipts.showRecordedBy": "Show \"Recorded by\"",
+      "offline.enabled": "Offline entry allowed",
+      "offline.maxQueueAgeHours": "Offline age limit (hours)"
+    },
+    "offline": "Offline entry",
+    "offlineEnabled": "Allow entries to be saved on the phone when there is no connection",
+    "queueAge": "Flag entries waiting longer than (hours)",
+    "queueAgeHint": "Older entries still sync, but an Admin sees a note in the audit log. 1 – 720."
   }
 }

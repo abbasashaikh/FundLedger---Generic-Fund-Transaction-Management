@@ -285,6 +285,37 @@ All blocking decisions were made on 07-Oct-2026 (TRD §18). The only remaining d
 - An offline transaction syncs after reconnection.
 - The same client transaction cannot be inserted twice.
 
+### Phase 5 status (09-Oct-2026)
+
+| ID | Status | Notes |
+|---|---|---|
+| P5-01 | ✅ | Dexie stores `outbox`, `refdata`, `ledgerCache`, plus `meta` (last signed-in profile, no secrets) and `discards`. Reference data (accounts, modes, categories, balances, `/me`, dashboard) is remembered on every successful load and used when the server can't be reached; the ledger remembers the last 200 entries per fund |
+| P5-02 | ✅ | Sync engine: runs on app start, when the connection returns, on "Sync now" and every 60 s while something waits; 50 per request, oldest first; exponential backoff 30 s → 15 min; rejected entries are never retried automatically; entries are bound to their user and never sent under another; one run at a time across tabs (Web Locks); a session that ended (401) keeps everything queued. Unit tests with fake time cover each rule |
+| P5-03 | ✅ | `POST /sync/transactions`: each entry in its own DB transaction through the same code as an online entry, so every rule is re-checked (TR-041). Results CREATED / DUPLICATE / REJECTED / RETRY. The race test sends the same 5-entry batch four times in parallel: exactly 5 entries, gap-free numbers, no errors. The device clock is kept as `client_created_at` for audit only (TR-042); entries older than the limit (`offline.max_queue_age_hours`, default 72) sync but are flagged `OFFLINE_ENTRY_STALE` (TR-043). `POST /sync/discard` records `OFFLINE_ENTRY_DISCARDED` |
+| P5-04 | 🟡 | Entry forms save to the outbox when offline or when the request can't get through (same client id both ways); top-bar indicator (offline / needs attention / N waiting / synced); the Waiting-to-sync screen with Edit & retry and a confirmed Discard; pending entries appear at the top of the ledger; edit and cancel are disabled offline with "Needs internet connection". **Deviation:** covered by Vitest component tests, not Playwright `setOffline` (no browser-automation project yet) |
+| P5-05 | ⏸ | Offline attachments need attachments (P3-07) first |
+| P5-06 | ✅ | The service worker precaches the app shell only, with no runtime caching, so API answers are never served from its cache (ADR-0005). First-route JS is 161 KB gzip (target < 250 KB). Lighthouse is not run yet |
+| P5-07 | 🟡 | **Done:** an authorization-matrix test lists every public route and fails if a new one appears unannounced, checks that every other route refuses an anonymous caller (401) and every Admin route refuses a Member; security-header test; `npm audit` and `dotnet list package --vulnerable` clean; git history searched for credentials (only documentation placeholders). **Not done:** OWASP ZAP baseline (needs a deployed staging) |
+| P5-08 | ⏸ | Needs the VPS and an off-site storage account: nightly encrypted dump job and the first restore drill |
+| P5-09 | ⏸ | Needs a deployed staging to rehearse the rollback |
+| P5-10 | 🟡 | Opt-in capacity test (`FUNDLEDGER_PERF_ROWS`) seeds a large fund, times the screens and prints query plans; run it from a machine close to the database, because every request makes several round trips (76 ms each from a laptop to Neon Singapore). **Finding below: computed balances are the one path that does not scale to the largest sizes.** Not run at 1 M rows (free Neon storage) |
+
+**Capacity finding (P5-10), measured in the database with a 240,000-entry organization (200,000 in one fund):**
+
+| Query | Time |
+|---|---|
+| Ledger page (newest 50) | 0.5 ms (index scan) |
+| Load one fund-year for a report | 12 ms for 60,000 rows |
+| `v_fund_balances` / `v_fund_account_balances` for the big fund | **~720 ms** (about 140 ms for a 40,000-entry fund) |
+
+The balance views read every active entry of the fund each time (ADR-0004 computes balances, TR-034 allows a stored balance only when needed). That is linear: roughly 3.5 s for 1 M entries in one fund, against a 300 ms target for the dashboard, and it runs on every dashboard load and in every create response. For the sizes in the PRD (about 500 entries a day at the peak per fund, so 60,000 or fewer in a busy week and a few thousand for an event like Ijtema) it is well inside the target; it only matters for a fund that keeps growing for years. Options, in order of effort: (1) rewrite the views as three grouped passes: tested, same answers, 2.2× faster (338 ms); (2) add a covering index so those passes are index-only; (3) keep a running balance per fund and account (TR-034). Not changed in this phase: it touches the money views, and the real data is far smaller. Reports load a whole fund-year into memory, which is fine at these sizes (12 ms for 60,000 rows) and should become SQL aggregation if funds reach hundreds of thousands of entries.
+
+**Offline behaviour worth knowing**
+- With no connection and a token that has expired, the app opens as the last signed-in user (their public profile is remembered on the device, no token or PIN) and entering continues; the token is renewed when the connection returns. On sign-out, or when the server refuses the session, the remembered profile and cached data are removed; queued entries stay, bound to their user.
+- A rejected entry stays in the outbox until the user fixes or discards it; nothing is forced in.
+
+**Deviation for the owner to know:** the cached data and the remembered profile are readable by anyone who can unlock the device while the app is open offline. This is the same exposure as the refresh cookie the browser already keeps.
+
 ---
 
 ## 8. Phase 6 — Production (W12–W13)

@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import type { components } from '../api/schema'
 import { ApiError, toApiError } from '../api/errors'
 import { API_BASE_URL } from '../api/config'
+import { clearReadCaches } from '../offline/db'
+import { loadLastSession, saveLastSession } from '../offline/refdata'
 
 // Session handling (ADR-0002, TRD TR-014/015):
 //  * the access token lives ONLY in memory (never localStorage);
@@ -43,6 +45,7 @@ async function postAuth(path: string, body?: unknown): Promise<Response> {
 async function accept(response: Response): Promise<void> {
   const auth = (await response.json()) as AuthResponse
   useSession.setState({ status: 'authenticated', accessToken: auth.accessToken, user: auth.user })
+  void saveLastSession(auth.user)
 }
 
 export async function login(mobile: string, pin: string): Promise<SessionUser> {
@@ -68,8 +71,17 @@ async function doRefresh(): Promise<boolean> {
     try {
       response = await postAuth('refresh')
     } catch {
-      // Offline: keep whatever state we have; the caller decides what to show.
-      return useSession.getState().status === 'authenticated'
+      // Offline. Never block entry (TRD §6.3): if this device knows who signed in last, open the app as them, without a
+      // token. Reads come from the device; the token is renewed when the connection is back (sync and API calls retry).
+      if (useSession.getState().status !== 'unknown') return useSession.getState().status === 'authenticated'
+      const remembered = await loadLastSession()
+      if (remembered) {
+        useSession.setState({ status: 'authenticated', accessToken: null, user: remembered })
+        return true
+      }
+
+      useSession.setState({ status: 'anonymous', accessToken: null, user: null })
+      return false
     }
 
     if (response.ok) {
@@ -86,6 +98,8 @@ async function doRefresh(): Promise<boolean> {
     break
   }
 
+  // The server refused the session: forget the cached profile and data. Queued entries stay, bound to their user, until that user signs in again.
+  void clearReadCaches()
   useSession.setState({ status: 'anonymous', accessToken: null, user: null })
   return false
 }
@@ -99,6 +113,7 @@ export async function logout(): Promise<void> {
   try {
     await postAuth('logout')
   } finally {
+    await clearReadCaches()
     useSession.setState({ status: 'anonymous', accessToken: null, user: null })
   }
 }

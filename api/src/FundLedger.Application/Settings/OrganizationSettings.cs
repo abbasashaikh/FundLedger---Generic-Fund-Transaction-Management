@@ -29,6 +29,10 @@ public sealed record OrganizationSettings
 
     public bool ReceiptShowRecordedBy { get; init; } = true;
 
+    public bool OfflineEnabled { get; init; } = true;
+
+    public int OfflineMaxQueueAgeHours { get; init; } = 72;
+
     public static OrganizationSettings Defaults { get; } = new();
 
     /// <summary>Builds settings from raw key → JSON value pairs, clamping to documented ranges.</summary>
@@ -48,6 +52,8 @@ public sealed record OrganizationSettings
             ReceiptEnabled = Bool(raw, "receipt.enabled", d.ReceiptEnabled),
             ReceiptFooterText = Str(raw, "receipt.footer_text", d.ReceiptFooterText, 200),
             ReceiptShowRecordedBy = Bool(raw, "receipt.show_recorded_by", d.ReceiptShowRecordedBy),
+            OfflineEnabled = Bool(raw, "offline.enabled", d.OfflineEnabled),
+            OfflineMaxQueueAgeHours = Int(raw, "offline.max_queue_age_hours", d.OfflineMaxQueueAgeHours, 1, 720),
         };
     }
 

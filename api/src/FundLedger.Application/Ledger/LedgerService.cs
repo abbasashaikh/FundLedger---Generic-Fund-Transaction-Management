@@ -31,10 +31,10 @@ public sealed partial class LedgerService(
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
 
     // ---- create ---------------------------------------------------------------------
-    public async Task<TransactionResult> CreateDepositAsync(CreateDepositRequest r, CancellationToken ct)
+    public async Task<TransactionResult> CreateDepositAsync(CreateDepositRequest r, CancellationToken ct, DateTimeOffset? offlineCreatedAt = null)
     {
         ArgumentNullException.ThrowIfNull(r);
-        return await CreateAsync(r.FundId, FundCapability.MoneyIn, TxnType.Deposit, r.Amount, r.TxnDate, r.TxnTime, r.ClientTxnId, async (fund) =>
+        return await CreateAsync(r.FundId, FundCapability.MoneyIn, TxnType.Deposit, r.Amount, r.TxnDate, r.TxnTime, r.ClientTxnId, offlineCreatedAt, async (fund) =>
         {
             await RequireCategoryAsync(r.CategoryId, CategoryDirection.MoneyIn, fund.Id, ct).ConfigureAwait(false);
             await RequireAccountAsync(r.AccountId, "accountId", ct).ConfigureAwait(false);
@@ -47,10 +47,10 @@ public sealed partial class LedgerService(
         }, ct).ConfigureAwait(false);
     }
 
-    public async Task<TransactionResult> CreateExpenseAsync(CreateExpenseRequest r, CancellationToken ct)
+    public async Task<TransactionResult> CreateExpenseAsync(CreateExpenseRequest r, CancellationToken ct, DateTimeOffset? offlineCreatedAt = null)
     {
         ArgumentNullException.ThrowIfNull(r);
-        return await CreateAsync(r.FundId, FundCapability.MoneyOut, TxnType.Expense, r.Amount, r.TxnDate, r.TxnTime, r.ClientTxnId, async (fund) =>
+        return await CreateAsync(r.FundId, FundCapability.MoneyOut, TxnType.Expense, r.Amount, r.TxnDate, r.TxnTime, r.ClientTxnId, offlineCreatedAt, async (fund) =>
         {
             await RequireCategoryAsync(r.CategoryId, CategoryDirection.MoneyOut, fund.Id, ct).ConfigureAwait(false);
             await RequireAccountAsync(r.AccountId, "accountId", ct).ConfigureAwait(false);
@@ -63,7 +63,7 @@ public sealed partial class LedgerService(
         }, ct).ConfigureAwait(false);
     }
 
-    public async Task<TransactionResult> CreateTransferAsync(CreateTransferRequest r, CancellationToken ct)
+    public async Task<TransactionResult> CreateTransferAsync(CreateTransferRequest r, CancellationToken ct, DateTimeOffset? offlineCreatedAt = null)
     {
         ArgumentNullException.ThrowIfNull(r);
         if (r.FromAccountId == r.ToAccountId)
@@ -71,7 +71,7 @@ public sealed partial class LedgerService(
             throw new DomainException("TRANSFER_SAME_ACCOUNT", "Choose two different accounts.");   // BR-010
         }
 
-        return await CreateAsync(r.FundId, FundCapability.Transfer, TxnType.Transfer, r.Amount, r.TxnDate, r.TxnTime, r.ClientTxnId, async (_) =>
+        return await CreateAsync(r.FundId, FundCapability.Transfer, TxnType.Transfer, r.Amount, r.TxnDate, r.TxnTime, r.ClientTxnId, offlineCreatedAt, async (_) =>
         {
             await RequireAccountAsync(r.FromAccountId, "fromAccountId", ct).ConfigureAwait(false);
             await RequireAccountAsync(r.ToAccountId, "toAccountId", ct).ConfigureAwait(false);
@@ -88,7 +88,7 @@ public sealed partial class LedgerService(
 
     private async Task<TransactionResult> CreateAsync(
         Guid fundId, FundCapability capability, TxnType type, string amountText, DateOnly date, string timeText, Guid? clientTxnId,
-        Func<Fund, Task> validateReferences, Action<Transaction> fill, CancellationToken ct)
+        DateTimeOffset? offlineCreatedAt, Func<Fund, Task> validateReferences, Action<Transaction> fill, CancellationToken ct)
     {
         var fund = await guard.RequireAsync(fundId, capability, ct).ConfigureAwait(false);
 
@@ -151,6 +151,9 @@ public sealed partial class LedgerService(
             TxnDate = date,
             TxnTime = time,
             ClientTxnId = clientTxnId,
+            // Entries that came through the offline outbox keep the device's clock for audit only (TR-042); created_at is the server's.
+            Source = offlineCreatedAt is null ? "ONLINE" : "OFFLINE",
+            ClientCreatedAt = offlineCreatedAt,
             CreatedBy = caller.UserId,
         };
         fill(txn);

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate, useSearchParams } from 'react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ArrowUpDown, TriangleAlert } from 'lucide-react'
 import { api, type Schemas } from '../../lib/api/client'
@@ -13,11 +13,17 @@ import { Button, Dialog, ErrorBanner, Field } from '../../components/ui'
 import { AmountInput, ChipGroup, TxnTypeBadge } from '../../components/ui/money'
 import { toast } from '../../lib/toast'
 import { ReceiptButton } from '../../components/ReceiptButton'
+import { useSession } from '../../lib/auth/session'
+import { type OutboxItem, type SyncCommand } from '../../lib/offline/db'
+import { enqueue, getItem, resubmit } from '../../lib/offline/outbox'
+import { isNetworkError } from '../../lib/offline/refdata'
+import { syncNow } from '../../lib/offline/sync'
 
 export type EntryKind = 'in' | 'out' | 'transfer'
 
 type Result = Schemas['TransactionResult']
 type Detail = Schemas['TransactionDetail']
+type Queued = { queued: true; item: OutboxItem }
 type Remembered = { categoryId?: string; accountId?: string; modeId?: string; fromId?: string; toId?: string }
 
 const memKey = (kind: EntryKind, fundId: string) => `fl.last.${kind}.${fundId}`
@@ -42,12 +48,19 @@ export function TransactionFormPage({ kind }: { kind: EntryKind }) {
   const me = useMe()
   const fund = useSelectedFund(me.data)
 
-  if (me.isPending) return <p className="text-text-muted">{t('app.loading')}</p>
-  if (!fund) return <Notice text={t('txn.noFund')} />
-  if (!fund.permissions[meta.allow]) return <Notice text={t('txn.noPermission')} />
-  if (fund.status !== 'ACTIVE') return <Notice text={t('txn.closedFund', { fund: fund.name })} />
+  // "Edit & retry" on the sync screen reopens a rejected entry from this device's outbox.
+  const resumeId = useSearchParams()[0].get('resume')
+  const resumed = useQuery({ queryKey: ['outbox-item', resumeId], enabled: !!resumeId, staleTime: 0, gcTime: 0, queryFn: async () => (await getItem(resumeId!)) ?? null })
+
+  if (me.isPending || (resumeId && resumed.isPending)) return <p className="text-text-muted">{t('app.loading')}</p>
+  const resume = resumed.data ?? undefined
+  // The queued entry's own fund is used, so a fixed entry is never re-pointed at whichever fund is selected now.
+  const target = resume ? me.data?.funds.find((f) => f.id === resume.fundId) ?? fund : fund
+  if (!target) return <Notice text={t('txn.noFund')} />
+  if (!target.permissions[meta.allow]) return <Notice text={t('txn.noPermission')} />
+  if (target.status !== 'ACTIVE') return <Notice text={t('txn.closedFund', { fund: target.name })} />
   // Keyed by fund so switching funds can never carry one fund's choices into another.
-  return <EntryForm key={`${kind}:${fund.id}`} kind={kind} fund={fund} />
+  return <EntryForm key={`${kind}:${target.id}:${resume?.clientTxnId ?? ''}`} kind={kind} fund={target} {...(resume ? { resume } : {})} />
 }
 
 function Notice({ text }: { text: string }) {
@@ -69,13 +82,16 @@ function usable<T extends { id: string; isActive: boolean }>(list: T[] | undefin
  * The entry form. With `edit`, it edits an existing entry (S07 → Edit, App Flow §4.6): fields start from
  * the saved values, the save sends If-Match with the revision that was loaded, and an Admin must give a reason.
  */
-export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: string; name: string }; edit?: Detail }) {
+export function EntryForm({ kind, fund, edit, resume }: { kind: EntryKind; fund: { id: string; name: string }; edit?: Detail; resume?: OutboxItem }) {
   const meta = META[kind]
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const x = edit?.transaction
   const me = useMe()
+  const owner = useSession((s) => s.user)
+  const rc = resume?.command
+  const offlineAllowed = me.data?.organization.offlineEnabled ?? true
 
   const keep = [x?.category?.id, x?.account?.id, x?.fromAccount?.id, x?.toAccount?.id, x?.paymentMode?.id]
   const accountsQ = useAccounts(!!edit)
@@ -88,22 +104,25 @@ export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: s
 
   const remembered = useMemo<Remembered>(() => (x
     ? { categoryId: x.category?.id, accountId: x.account?.id, modeId: x.paymentMode?.id, fromId: x.fromAccount?.id, toId: x.toAccount?.id }
-    : recall(kind, fund.id)), [kind, fund.id, x])
-  const [amount, setAmount] = useState(() => x?.amount ?? '')
+    : rc
+      ? { categoryId: rc.categoryId ?? undefined, accountId: rc.accountId ?? undefined, modeId: rc.paymentModeId ?? undefined, fromId: rc.fromAccountId ?? undefined, toId: rc.toAccountId ?? undefined }
+      : recall(kind, fund.id)), [kind, fund.id, x, rc])
+  const [amount, setAmount] = useState(() => x?.amount ?? rc?.amount ?? '')
   const [chosen, setChosen] = useState<Remembered>({})
-  const [purposeText, setPurposeText] = useState<string | undefined>(() => x?.purpose ?? undefined)
-  const [party, setParty] = useState(() => x?.receivedFrom ?? x?.paidTo ?? '')
-  const [reference, setReference] = useState(() => x?.referenceNumber ?? '')
-  const [remarks, setRemarks] = useState(() => x?.remarks ?? '')
-  const [date, setDate] = useState(() => x?.txnDate ?? todayIso())
-  const [time, setTime] = useState(() => x?.txnTime.slice(0, 5) ?? nowTime())
+  const [purposeText, setPurposeText] = useState<string | undefined>(() => x?.purpose ?? rc?.purpose ?? undefined)
+  const [party, setParty] = useState(() => x?.receivedFrom ?? x?.paidTo ?? rc?.receivedFrom ?? rc?.paidTo ?? '')
+  const [reference, setReference] = useState(() => x?.referenceNumber ?? rc?.referenceNumber ?? '')
+  const [remarks, setRemarks] = useState(() => x?.remarks ?? rc?.remarks ?? '')
+  const [date, setDate] = useState(() => x?.txnDate ?? rc?.txnDate ?? todayIso())
+  const [time, setTime] = useState(() => x?.txnTime.slice(0, 5) ?? rc?.txnTime.slice(0, 5) ?? nowTime())
   const [reason, setReason] = useState('')
-  const [moreOpen, setMoreOpen] = useState(!!edit)
+  const [moreOpen, setMoreOpen] = useState(!!edit || !!resume)
+  const [queuedItem, setQueuedItem] = useState<OutboxItem | null>(null)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [banner, setBanner] = useState<string | null>(null)
   const [confirm, setConfirm] = useState(false)
   const [saved, setSaved] = useState<Result | null>(null)
-  const [clientTxnId, setClientTxnId] = useState(() => crypto.randomUUID())
+  const [clientTxnId, setClientTxnId] = useState(() => resume?.clientTxnId ?? crypto.randomUUID())
 
   // Effective selections: the user's pick, else last used (if still available), else the first option.
   const pick = (list: { id: string }[] | undefined, mine: string | undefined, last: string | undefined) =>
@@ -129,7 +148,7 @@ export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: s
   const lowBalance = kind === 'transfer' && !!wire && fromBalance !== undefined && compareAmounts(wire, fromBalance) > 0
 
   const save = useMutation({
-    mutationFn: async (): Promise<Result> => {
+    mutationFn: async (): Promise<Result | Queued> => {
       if (x) {
         return unwrap(await api.PUT('/api/v1/transactions/{id}', {
           params: { path: { id: x.id }, header: { 'If-Match': `"${x.revision}"` } },
@@ -145,6 +164,40 @@ export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: s
         }))
       }
       const common = { fundId: fund.id, amount: wire!, txnDate: date, txnTime: time, remarks: remarks.trim() || null, clientTxnId }
+
+      // Entries can always be written down on this device and sent later (TRD §8): when there is no connection, or the
+      // request fails to get through. The same id is sent either way, so a request that DID arrive can never record twice.
+      const queue = async (): Promise<Queued> => {
+        if (!owner) throw new ApiError(401, 'UNAUTHENTICATED', t('errors.generic'))
+        const command: SyncCommand = {
+          clientTxnId, type: meta.type, clientCreatedAt: rc?.clientCreatedAt ?? new Date().toISOString(), fundId: fund.id, amount: wire!, txnDate: date, txnTime: time,
+          categoryId: kind === 'transfer' ? null : categoryId, accountId: kind === 'transfer' ? null : accountId,
+          fromAccountId: kind === 'transfer' ? fromId : null, toAccountId: kind === 'transfer' ? toId : null,
+          paymentModeId: kind === 'transfer' ? null : modeId,
+          receivedFrom: kind === 'in' ? party.trim() || null : null, paidTo: kind === 'out' ? party.trim() || null : null,
+          purpose: purpose.trim(), referenceNumber: reference.trim() || null, remarks: remarks.trim() || null,
+        }
+        const display = {
+          fundName: fund.name, ...(kind === 'transfer' ? { fromAccount: accountName(fromId), toAccount: accountName(toId) } : { category: category?.name ?? '', account: accountName(accountId), paymentMode: mode?.name ?? '' }),
+        }
+        if (resume) {
+          await resubmit(resume.clientTxnId, command, display)
+        } else {
+          await enqueue({ userId: owner.id, orgId: owner.organizationId }, command, display)
+        }
+
+        return { queued: true, item: { ...(resume ?? ({} as OutboxItem)), clientTxnId, command, display } }
+      }
+
+      if (resume || (!navigator.onLine && offlineAllowed)) return queue()
+      try {
+        return await online()
+      } catch (error) {
+        if (isNetworkError(error) && offlineAllowed) return queue()
+        throw error
+      }
+
+      async function online(): Promise<Result> {
       if (kind === 'in') {
         return unwrap(await api.POST('/api/v1/transactions/deposit', {
           body: { ...common, categoryId, accountId, paymentModeId: modeId, receivedFrom: party.trim() || null, purpose: purpose.trim(), referenceNumber: reference.trim() || null },
@@ -158,8 +211,18 @@ export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: s
       return unwrap(await api.POST('/api/v1/transactions/transfer', {
         body: { ...common, fromAccountId: fromId, toAccountId: toId, paymentModeId: null, purpose: purpose.trim(), referenceNumber: reference.trim() || null },
       }))
+      }
     },
     onSuccess: async (result) => {
+      if ('queued' in result) {
+        localStorage.setItem(memKey(kind, fund.id), JSON.stringify({ categoryId, accountId, modeId, fromId, toId } satisfies Remembered))
+        setConfirm(false)
+        setQueuedItem(result.item)
+        toast.success(t('sync.queuedToast'))
+        void syncNow()          // a no-op while offline; sends it at once when only the request failed
+        return
+      }
+
       if (x) {
         setConfirm(false)
         toast.success(t('txn.updatedToast', { number: result.transaction.txnNumber }))
@@ -215,6 +278,22 @@ export function EntryForm({ kind, fund, edit }: { kind: EntryKind; fund: { id: s
     setReference('')
     setRemarks('')
     setClientTxnId(crypto.randomUUID()) // a NEW entry gets a NEW id
+  }
+
+  if (queuedItem) {
+    return (
+      <div className="mx-auto grid max-w-xl gap-4 rounded-lg border border-border bg-surface p-6 text-center" role="status">
+        <TxnTypeBadge type={meta.type} />
+        <h1 className="text-2xl font-semibold">{t('sync.savedOnDevice')}</h1>
+        <p className="amount text-3xl font-bold">{formatRupees(queuedItem.command.amount)}</p>
+        <p className="text-sm text-text-muted">{t('sync.savedOnDeviceBody')}</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button onClick={() => { setQueuedItem(null); addAnother() }}>{t('txn.addAnother')}</Button>
+          <Button variant="secondary" onClick={() => void navigate('/sync')}>{t('sync.viewPending')}</Button>
+          <Button variant="ghost" onClick={() => void navigate('/')}>{t('txn.done')}</Button>
+        </div>
+      </div>
+    )
   }
 
   if (saved) {

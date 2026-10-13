@@ -53,14 +53,16 @@
     "state": {
       "PENDING": "Pending sync",
       "SYNCING": "Sending…",
-      "NEEDS_ATTENTION": "Needs attention"
+      "NEEDS_ATTENTION": "Needs attention",
+      "FILES": "Uploading files"
     },
     "syncedToast": "{{count}} entries synced",
     "rejectedToast": "{{count}} entries couldn't be added: open Waiting to sync",
     "queuedToast": "Saved on this device",
     "savedOnDevice": "Saved on this device",
     "savedOnDeviceBody": "It will be sent as soon as you're online. You can keep adding entries.",
-    "viewPending": "View pending"
+    "viewPending": "View pending",
+    "filesWaiting": "{{count}} file(s) waiting"
   },
   "theme": {
     "label": "Theme",
@@ -537,11 +539,37 @@
       "receipts.footerText": "Receipt footer",
       "receipts.showRecordedBy": "Show \"Recorded by\"",
       "offline.enabled": "Offline entry allowed",
-      "offline.maxQueueAgeHours": "Offline age limit (hours)"
+      "offline.maxQueueAgeHours": "Offline age limit (hours)",
+      "attachments.maxMb": "Largest file (MB)"
     },
     "offline": "Offline entry",
     "offlineEnabled": "Allow entries to be saved on the phone when there is no connection",
     "queueAge": "Flag entries waiting longer than (hours)",
-    "queueAgeHint": "Older entries still sync, but an Admin sees a note in the audit log. 1 – 720."
+    "queueAgeHint": "Older entries still sync, but an Admin sees a note in the audit log. 1 – 720.",
+    "attachments": "Photos and files",
+    "maxMb": "Largest file (MB)",
+    "maxMbHint": "1 – 20. Photos are shrunk on the phone, so 5 is plenty."
+  },
+  "attachments": {
+    "title": "Photos and files",
+    "takePhoto": "Take photo",
+    "chooseFile": "Choose file",
+    "chosen": "Chosen files",
+    "remove": "Remove {{name}}",
+    "hint": "Photos or PDFs, up to {{max}} per entry. Photos are made smaller before upload.",
+    "tooMany": "Only {{max}} files can be added.",
+    "attached": "{{count}} file(s) attached.",
+    "someFailed": "{{count}} file(s) couldn't be added. Open the entry to add them again.",
+    "add": "Add file",
+    "added": "File added.",
+    "none": "No files yet.",
+    "hidden": "Hidden",
+    "hide": "Hide",
+    "hideTitle": "Hide this file?",
+    "hideBody": "Members will no longer see it. It is kept, and this is recorded in the audit log.",
+    "hideReason": "Reason",
+    "hiddenToast": "File hidden.",
+    "openPdf": "Open PDF",
+    "pdfNote": "PDFs open in a new tab."
   }
 }

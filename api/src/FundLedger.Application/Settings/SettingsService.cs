@@ -20,12 +20,14 @@ public sealed record ReceiptSettings(bool Enabled, string FooterText, bool ShowR
 
 public sealed record OfflineSettings(bool Enabled, int MaxQueueAgeHours);
 
+public sealed record AttachmentSettings(int MaxMb);
+
 /// <summary>
 /// The Settings screen (App Flow §5.5, S26). Only settings the app already acts on are listed; attachment and
 /// offline settings join in their phases. Currency (INR) and the numbering period (Indian FY, decision Q-08)
 /// are fixed in V1 and therefore read-only.
 /// </summary>
-public sealed record SettingsDto(OrganizationProfile Organization, TransactionSettings Transactions, AuthSettings Auth, ReceiptSettings Receipts, OfflineSettings Offline);
+public sealed record SettingsDto(OrganizationProfile Organization, TransactionSettings Transactions, AuthSettings Auth, ReceiptSettings Receipts, OfflineSettings Offline, AttachmentSettings Attachments);
 
 public sealed class SettingsDtoValidator : AbstractValidator<SettingsDto>
 {
@@ -55,6 +57,9 @@ public sealed class SettingsDtoValidator : AbstractValidator<SettingsDto>
 
         RuleFor(x => x.Receipts).NotNull();
         RuleFor(x => x.Receipts.FooterText).NotNull().MaximumLength(200).When(x => x.Receipts is not null);
+
+        RuleFor(x => x.Attachments).NotNull();
+        RuleFor(x => x.Attachments.MaxMb).InclusiveBetween(1, 20).When(x => x.Attachments is not null);
 
         RuleFor(x => x.Offline).NotNull();
         RuleFor(x => x.Offline.MaxQueueAgeHours).InclusiveBetween(1, 720).When(x => x.Offline is not null);
@@ -96,7 +101,8 @@ public sealed class SettingsService(IFundLedgerDb db, ICurrentUser caller, ISett
             new TransactionSettings(s.EditWindowMinutes, s.BackdateDaysMember, s.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)),
             new AuthSettings(s.PinMaxFailures, s.PinLockoutMinutes, s.SessionIdleMinutes, s.SessionAbsoluteDays),
             new ReceiptSettings(s.ReceiptEnabled, s.ReceiptFooterText, s.ReceiptShowRecordedBy),
-            new OfflineSettings(s.OfflineEnabled, s.OfflineMaxQueueAgeHours));
+            new OfflineSettings(s.OfflineEnabled, s.OfflineMaxQueueAgeHours),
+            new AttachmentSettings(s.AttachmentMaxMb));
     }
 
     public async Task<SettingsDto> SaveAsync(SettingsDto next, CancellationToken ct)
@@ -150,6 +156,7 @@ public sealed class SettingsService(IFundLedgerDb db, ICurrentUser caller, ISett
             ("receipt.enabled", before.Receipts.Enabled, next.Receipts.Enabled),
             ("receipt.footer_text", before.Receipts.FooterText, next.Receipts.FooterText.Trim()),
             ("receipt.show_recorded_by", before.Receipts.ShowRecordedBy, next.Receipts.ShowRecordedBy),
+            ("attachments.max_mb", before.Attachments.MaxMb, next.Attachments.MaxMb),
             ("offline.enabled", before.Offline.Enabled, next.Offline.Enabled),
             ("offline.max_queue_age_hours", before.Offline.MaxQueueAgeHours, next.Offline.MaxQueueAgeHours),
         };

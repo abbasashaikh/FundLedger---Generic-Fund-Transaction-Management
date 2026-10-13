@@ -6,10 +6,10 @@ import { offlineDb, type OutboxDisplay, type OutboxItem, type SyncCommand } from
 export type Owner = { userId: string; orgId: string }
 
 /** Queues a new entry (state PENDING). The id is the idempotency key the server will see (BR-018). */
-export async function enqueue(owner: Owner, command: SyncCommand, display: OutboxDisplay): Promise<OutboxItem> {
+export async function enqueue(owner: Owner, command: SyncCommand, display: OutboxDisplay, attachments: File[] = []): Promise<OutboxItem> {
   const item: OutboxItem = {
     clientTxnId: command.clientTxnId, userId: owner.userId, orgId: owner.orgId, fundId: command.fundId, command, display,
-    createdAt: command.clientCreatedAt, state: 'PENDING', attempts: 0, nextAttemptAt: 0,
+    createdAt: command.clientCreatedAt, state: 'PENDING', attempts: 0, nextAttemptAt: 0, ...(attachments.length > 0 ? { attachments } : {}),
   }
   await offlineDb.outbox.put(item)
   return item
@@ -21,8 +21,8 @@ export const listFor = (userId: string): Promise<OutboxItem[]> => offlineDb.outb
 export const getItem = (clientTxnId: string): Promise<OutboxItem | undefined> => offlineDb.outbox.get(clientTxnId)
 
 /** After the user fixes a rejected entry: replace its content and send it again (same id: it was never recorded). */
-export async function resubmit(clientTxnId: string, command: SyncCommand, display: OutboxDisplay): Promise<void> {
-  await offlineDb.outbox.update(clientTxnId, { command, display, fundId: command.fundId, state: 'PENDING', attempts: 0, nextAttemptAt: 0, lastError: undefined })
+export async function resubmit(clientTxnId: string, command: SyncCommand, display: OutboxDisplay, attachments?: File[]): Promise<void> {
+  await offlineDb.outbox.update(clientTxnId, { command, display, fundId: command.fundId, state: 'PENDING', attempts: 0, nextAttemptAt: 0, lastError: undefined, ...(attachments ? { attachments } : {}) })
 }
 
 /** Removes a rejected entry the user chose to discard, and remembers to tell the audit log when next online. */

@@ -11,6 +11,7 @@ import { useTransactionDetail } from '../../lib/api/hooks'
 import { useMe } from '../../lib/auth/queries'
 import { useOnline } from '../../pwa/useOnline'
 import { ReceiptButton } from '../../components/ReceiptButton'
+import { AttachmentStrip } from '../../components/Attachments'
 import { Badge, Button, Dialog, ErrorBanner } from '../../components/ui'
 import { Section, SignedAmount, TxnTypeBadge } from '../../components/ui/money'
 import { toast } from '../../lib/toast'
@@ -113,6 +114,9 @@ export function TransactionDetailPage() {
         )}
         <p className="text-xs text-text-muted">{t('txn.source', { source: x.source })}</p>
       </Section>
+
+      <AttachmentStrip transactionId={x.id} online={online} isAdmin={me.data?.role === 'ADMIN'}
+        canAdd={!!me.data?.organization.attachmentsEnabled && x.status === 'ACTIVE' && (me.data?.role === 'ADMIN' || x.createdBy.id === me.data?.id)} />
 
       <HistorySection id={x.id} revision={x.revision} />
 

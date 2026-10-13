@@ -184,6 +184,7 @@ internal static class ApiSetup
         AuditEndpoints.Map(app);
         ReportEndpoints.Map(app);
         SyncEndpoints.Map(app);
+        AttachmentEndpoints.Map(app);
 
         // The OpenAPI document is published outside production only (TRD §11.1).
         if (!app.Environment.IsProduction())

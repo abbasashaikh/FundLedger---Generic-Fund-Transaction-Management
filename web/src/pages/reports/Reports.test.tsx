@@ -153,6 +153,7 @@ describe('Settings', () => {
     auth: { pinMaxFailures: 5, pinLockoutMinutes: 15, sessionIdleMinutes: 480, sessionAbsoluteDays: 7 },
     receipts: { enabled: true, footerText: 'Thanks.', showRecordedBy: true },
     offline: { enabled: true, maxQueueAgeHours: 72 },
+    attachments: { maxMb: 5 },
   }
 
   it('lists what will change before saving, then saves', async () => {

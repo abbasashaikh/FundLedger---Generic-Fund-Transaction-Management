@@ -96,6 +96,24 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
     }
 }
 
+internal sealed class TransactionAttachmentConfiguration : IEntityTypeConfiguration<TransactionAttachment>
+{
+    public void Configure(EntityTypeBuilder<TransactionAttachment> b)
+    {
+        b.ToTable("transaction_attachments");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedNever();
+        b.Property(x => x.StorageKey).HasMaxLength(300);
+        b.Property(x => x.OriginalFilename).HasMaxLength(200);
+        b.Property(x => x.ContentType).HasMaxLength(100);
+        b.Property(x => x.Sha256).HasColumnType("char(64)");
+        b.Property(x => x.UploadedAt).HasDefaultValueSql("now()");
+        b.Property(x => x.HiddenReason).HasMaxLength(200);
+        b.HasIndex(x => x.StorageKey).IsUnique();
+        b.HasIndex(x => x.TransactionId).HasDatabaseName("ix_attach_txn");
+    }
+}
+
 internal sealed class TransactionRevisionConfiguration : IEntityTypeConfiguration<TransactionRevision>
 {
     public void Configure(EntityTypeBuilder<TransactionRevision> b)

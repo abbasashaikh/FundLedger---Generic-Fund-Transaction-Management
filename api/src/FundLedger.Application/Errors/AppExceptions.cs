@@ -49,6 +49,24 @@ public sealed class PreconditionRequiredException()
     public override int Status => 428;
 }
 
+/// <summary>413 — an upload is larger than the organization allows.</summary>
+public sealed class PayloadTooLargeException(string message) : AppException("ATTACHMENT_TOO_LARGE", message)
+{
+    public override int Status => 413;
+}
+
+/// <summary>415 — an upload is not one of the allowed file types (judged by its content, not its name).</summary>
+public sealed class UnsupportedMediaException(string message) : AppException("ATTACHMENT_TYPE_NOT_ALLOWED", message)
+{
+    public override int Status => 415;
+}
+
+/// <summary>503 — a needed service (file storage) is not set up on this server.</summary>
+public sealed class ServiceUnavailableException(string code, string message) : AppException(code, message)
+{
+    public override int Status => 503;
+}
+
 /// <summary>429 — the caller is doing something too often (for example generating many receipts).</summary>
 public sealed class RateLimitedException(string message = "Too many requests. Please try again shortly.") : AppException("RATE_LIMITED", message)
 {

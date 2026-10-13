@@ -91,13 +91,20 @@ public sealed partial class AuthorizationMatrixTests(PostgresFixture db) : IAsyn
             }
 
             var status = (await anonymous.SendAsync(request, TestContext.Current.CancellationToken)).StatusCode;
+            if (status == HttpStatusCode.UnsupportedMediaType)
+            {
+                // A file-upload route only matches a multipart request, so the JSON probe above never reaches it. Ask properly.
+                using var upload = new HttpRequestMessage(new HttpMethod(r.Method), r.Url) { Content = new MultipartFormDataContent { { new ByteArrayContent([1]), "file", "x.pdf" } } };
+                status = (await anonymous.SendAsync(upload, TestContext.Current.CancellationToken)).StatusCode;
+            }
+
             if (status != HttpStatusCode.Unauthorized)
             {
                 failures.Add($"{r.Key} -> {(int)status}");
             }
         }
 
-        Assert.Empty(failures);
+        Assert.True(failures.Count == 0, string.Join("; ", failures));
     }
 
     [Fact]
@@ -128,7 +135,7 @@ public sealed partial class AuthorizationMatrixTests(PostgresFixture db) : IAsyn
             }
         }
 
-        Assert.Empty(failures);
+        Assert.True(failures.Count == 0, string.Join("; ", failures));
     }
 
     [Fact]

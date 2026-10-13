@@ -14,7 +14,8 @@
 	}
 	# Abuse backstop in front of the API's own per-client limiter (TR-073).
 	request_body {
-		max_size 12MB
+		# Photos are limited to 20 MB by the API (Settings); leave room for the form envelope.
+		max_size 22MB
 	}
 	log {
 		output stdout

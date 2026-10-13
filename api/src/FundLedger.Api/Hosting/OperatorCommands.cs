@@ -70,8 +70,8 @@ internal static class OperatorCommands
     public static int GenerateJwtKey()
     {
         using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        Console.WriteLine("# Auth__Jwt__SigningKeyPem — PRIVATE. Store only in the secrets manager / server .env.");
-        Console.WriteLine(key.ExportPkcs8PrivateKeyPem());
+        Console.WriteLine("# PRIVATE. Store only in the secrets manager / the server .env (never in git). Paste the next line as it is:");
+        Console.WriteLine("Auth__Jwt__SigningKeyPem=" + key.ExportPkcs8PrivateKeyPem().Trim().ReplaceLineEndings("\n"));
         Console.WriteLine();
         Console.WriteLine("# Public key — keep for Auth__Jwt__PreviousKeys__N__PublicKeyPem after the next rotation.");
         Console.WriteLine(key.ExportSubjectPublicKeyInfoPem());

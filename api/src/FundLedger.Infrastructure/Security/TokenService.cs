@@ -40,6 +40,9 @@ public sealed class JwtKeyRing : IDisposable
 {
     private readonly List<ECDsa> _owned = [];
 
+    /// <summary>An .env file holds one line per value, so a PEM may be written with a literal backslash-n between its lines.</summary>
+    internal static string Unflatten(string pem) => pem.Replace("\\n", "\n", StringComparison.Ordinal);
+
     public JwtKeyRing(JwtOptions options, bool allowEphemeral)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -49,7 +52,7 @@ public sealed class JwtKeyRing : IDisposable
         _owned.Add(signing);
         if (!string.IsNullOrWhiteSpace(options.SigningKeyPem))
         {
-            signing.ImportFromPem(options.SigningKeyPem);
+            signing.ImportFromPem(Unflatten(options.SigningKeyPem));
             SigningKey = new ECDsaSecurityKey(signing) { KeyId = options.KeyId };
         }
         else if (allowEphemeral)
@@ -69,7 +72,7 @@ public sealed class JwtKeyRing : IDisposable
         {
             var key = ECDsa.Create();
             _owned.Add(key);
-            key.ImportFromPem(previous.PublicKeyPem);
+            key.ImportFromPem(Unflatten(previous.PublicKeyPem));
             validation.Add(new ECDsaSecurityKey(key) { KeyId = previous.KeyId });
         }
 

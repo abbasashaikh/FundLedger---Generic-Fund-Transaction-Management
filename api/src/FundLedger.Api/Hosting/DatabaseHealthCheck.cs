@@ -27,8 +27,16 @@ internal sealed class DatabaseHealthCheck(FundLedgerDbContext db) : IHealthCheck
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            // Message only: never the connection string.
-            return HealthCheckResult.Unhealthy("Database unreachable.", new InvalidOperationException(ex.GetType().Name));
+            // The log says what failed and where, never the connection string: a message that mentions a password is withheld.
+            return HealthCheckResult.Unhealthy($"Database unreachable. {Describe(ex)}", new InvalidOperationException(ex.GetType().Name));
         }
+    }
+
+    internal static string Describe(Exception ex)
+    {
+        var message = ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) ? "(message withheld)" : ex.Message;
+        var frames = (ex.StackTrace ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(4);
+        var text = $"{ex.GetType().Name}: {message} | {string.Join(" <- ", frames)}";
+        return text.Length <= 700 ? text : text[..700];
     }
 }

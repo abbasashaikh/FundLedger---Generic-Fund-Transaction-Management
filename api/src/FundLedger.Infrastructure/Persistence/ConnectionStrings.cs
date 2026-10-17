@@ -7,6 +7,11 @@ namespace FundLedger.Infrastructure.Persistence;
 /// <c>postgresql://user:pass@host/db?sslmode=require</c> URL (the format Neon
 /// hands out), and returns an Npgsql connection string.
 /// </summary>
+/// <remarks>
+/// The URL is split by hand rather than with <see cref="Uri"/>: a password that contains <c>/ ? # : @</c>
+/// (unescaped, as people paste it) makes <see cref="Uri"/> throw "Invalid port specified". The user name and
+/// password are everything before the LAST <c>@</c>, split at the first <c>:</c>; both may be percent-encoded.
+/// </remarks>
 public static class ConnectionStrings
 {
     public static string Normalize(string value)
@@ -20,18 +25,39 @@ public static class ConnectionStrings
             return value;
         }
 
-        var uri = new Uri(value);
-        var userInfo = uri.UserInfo.Split(':', 2);
+        var rest = value[(value.IndexOf("://", StringComparison.Ordinal) + 3)..];
+        var at = rest.LastIndexOf('@');
+        var userInfo = at >= 0 ? rest[..at] : string.Empty;
+        var location = at >= 0 ? rest[(at + 1)..] : rest;
+
+        var queryStart = location.IndexOf('?', StringComparison.Ordinal);
+        var query = queryStart >= 0 ? location[(queryStart + 1)..] : string.Empty;
+        var hostAndPath = queryStart >= 0 ? location[..queryStart] : location;
+
+        var slash = hostAndPath.IndexOf('/', StringComparison.Ordinal);
+        var authority = slash >= 0 ? hostAndPath[..slash] : hostAndPath;
+        var database = slash >= 0 ? Uri.UnescapeDataString(hostAndPath[(slash + 1)..]) : string.Empty;
+
+        var host = authority;
+        var port = 5432;
+        var colon = authority.LastIndexOf(':');
+        if (colon >= 0 && int.TryParse(authority[(colon + 1)..], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            host = authority[..colon];
+            port = parsed;
+        }
+
+        var credentials = userInfo.Split(':', 2);
         var builder = new NpgsqlConnectionStringBuilder
         {
-            Host = uri.Host,
-            Port = uri.IsDefaultPort || uri.Port <= 0 ? 5432 : uri.Port,
-            Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')),
-            Username = Uri.UnescapeDataString(userInfo[0]),
-            Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null,
+            Host = host,
+            Port = port,
+            Database = database,
+            Username = Uri.UnescapeDataString(credentials[0]),
+            Password = credentials.Length > 1 ? Uri.UnescapeDataString(credentials[1]) : null,
         };
 
-        foreach (var pair in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
             var kv = pair.Split('=', 2);
             var key = Uri.UnescapeDataString(kv[0]).ToUpperInvariant();

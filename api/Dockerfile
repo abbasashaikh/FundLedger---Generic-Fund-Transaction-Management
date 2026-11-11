@@ -21,7 +21,7 @@ COPY src/ src/
 RUN dotnet publish src/FundLedger.Api/FundLedger.Api.csproj -c Release -o /out/api --no-restore /p:OpenApiGenerateDocuments=false \
  && dotnet publish src/FundLedger.Worker/FundLedger.Worker.csproj -c Release -o /out/worker --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 ARG APP_VERSION=0.0.0
 ARG GIT_SHA=unknown
 ENV APP_VERSION=${APP_VERSION} \

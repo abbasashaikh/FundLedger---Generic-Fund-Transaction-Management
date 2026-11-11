@@ -3,7 +3,7 @@
 #   Worker:  docker run <image> worker
 #   Migrate: docker run -e ConnectionStrings__Migrations=... <image> migrate
 # Build context: ./api
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Restore first for layer caching.
